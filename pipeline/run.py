@@ -24,7 +24,7 @@ from .checks import (
 )
 from .config import ROOT, load_config, resolve
 from .dates import build_dates
-from .io import fingerprint, read_source
+from .io import apply_filters, fingerprint, read_source
 from .prepare import prepare, save_prepared
 from .report import overall_status, write_quality_report
 
@@ -107,6 +107,10 @@ def execute(cfg: dict, data_path: str | None = None, run_id: str | None = None) 
                 for cid in list(SPECS)[1:]:
                     results.append(skipped(cid, "no evaluable: falló el control a) de columnas y tipos"))
             else:
+                df, population = apply_filters(df, cfg)       # población de referencia
+                log.data["poblacion"] = population
+                for col, vals in population["valores_no_encontrados"].items():
+                    log.data["advertencias"].append(f"filtro: valores inexistentes en {col}: {vals}")
                 dates = build_dates(df, cfg)
                 results += [
                     check_dates_coverage(df, cfg, dates),
@@ -133,7 +137,7 @@ def execute(cfg: dict, data_path: str | None = None, run_id: str | None = None) 
         # 5) Compuerta de calidad -------------------------------------------
         with log.stage("compuerta_calidad") as st:
             report = write_quality_report(results, run_dir, run_id)
-            log.data["advertencias"] = [f"{r.name}: {r.message}" for r in results if r.status == "WARN"]
+            log.data["advertencias"] += [f"{r.name}: {r.message}" for r in results if r.status == "WARN"]
             if overall_status(results) == FAIL:
                 st["estado"] = "detenida"
                 exit_code = 2

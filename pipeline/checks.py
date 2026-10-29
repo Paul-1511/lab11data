@@ -118,8 +118,10 @@ def check_columns_types(df: pd.DataFrame, cfg: dict) -> CheckResult:
     tol = cfg["quality"]["columns"]["max_unparseable_frac"]
     required = dict(cols["required"])
     optional = dict(cols.get("optional", {}))
-    # La variable a estimar y las columnas de fecha siempre son indispensables.
+    # La variable a estimar, las columnas de fecha y las de los filtros siempre son indispensables.
     required.setdefault(cols["value"], "numeric")
+    for flt in cfg.get("filters") or []:
+        required.setdefault(flt["column"], "text")
     if cols["date"]["mode"] == "column":
         required.setdefault(cols["date"]["column"], "date")
     else:

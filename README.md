@@ -62,8 +62,9 @@ Documentación: [`docs/ALCANCE.md`](docs/ALCANCE.md) · [`docs/CONTROLES_CALIDAD
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
 
-# Con datos institucionales (montados en data/raw/ o indicados con --data):
-python -m pipeline.run --config config/config.yaml --data RUTA/Base_Migracion_2009-2026jun.xlsx
+# Con datos institucionales: copie Base_Migracion_2009-2026jun.xlsx (la del Lab 2) a data/raw/
+# (está en .gitignore) o indique la ruta con --data. La lectura del Excel tarda ~30 s.
+python -m pipeline.run --config config/config.yaml
 
 # Sin datos institucionales (sintéticos):
 python scripts/make_synthetic_data.py
@@ -79,8 +80,8 @@ Cada ejecución crea `artifacts/runs/<run_id>/` con `quality_report.md|json`, `r
 python -m pytest -q
 ```
 
-Cubren cada control (caso correcto y caso fallido) y verifican que, ante cada falla inyectada, el pipeline se detiene sin publicar.
-Para provocar una falla a mano: `python scripts/make_synthetic_data.py --fault duplicate_key --out /tmp/malo.csv`.
+Cubren cada control (caso correcto y caso fallido), la población de referencia y la clave real y verifican que, ante cada falla inyectada, el pipeline se detiene sin publicar.
+Para provocar una falla a mano: `python scripts/make_synthetic_data.py --fault duplicate_key --out /tmp/malo.csv`; para inyectarla en una copia de los datos reales, añadir `--base RUTA/Base.xlsx`.
 
 ## Estructura nueva
 
