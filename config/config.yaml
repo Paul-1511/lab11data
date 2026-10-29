@@ -1,0 +1,84 @@
+# =============================================================================
+# Configuración del pipeline — Laboratorio 11 (MLOps) · CC3066 Data Science
+# Todo lo que cambia entre ejecuciones vive aquí: rutas, períodos, parámetros
+# y umbrales de aceptación. Los comentarios "CONFIRMAR" marcan decisiones
+# del grupo que aún no están cerradas.
+# =============================================================================
+
+run:
+  seed: 42                         # semilla para cualquier componente aleatorio
+  output_dir: artifacts/runs       # una carpeta por ejecución (run_id)
+  published_dir: published         # versiones aprobadas que lee el tablero
+
+target:
+  name: ingreso_mensual_visitantes_no_residentes
+  destination: Guatemala           # CONFIRMAR: destino asignado al grupo
+  unit: visitantes por mes
+  granularity: monthly             # la variable se estima por mes
+  breakdowns: [via, region, residencia]   # niveles adicionales de agregación
+
+source:
+  # Los datos institucionales NO van en la imagen Docker ni se versionan en Git:
+  # se montan o se indica la ruta aquí (o con --data en la línea de comandos).
+  path: data/raw/Base_Migracion_2009-2026jun.xlsx
+  sheet: 0                         # solo aplica a Excel
+  granularity: monthly             # la fuente es mensual (no presencias diarias)
+
+columns:
+  # Nombres tal como aparecen en el Excel. CONFIRMAR contra el archivo real:
+  # value/dimensions salen de dashboard/loaders.py; year/month son supuestos.
+  value: Viajero
+  date:
+    mode: year_month               # year_month | column
+    year: Año
+    month: Mes                     # numérico (1-12) o nombre en español
+    column: Fecha                  # solo si mode: column
+  dimensions:
+    via: Vía
+    region: Región dos
+    residencia: Agrupación Residencia
+  required:                        # si falta o tiene tipo incompatible: se detiene
+    Viajero: numeric
+    Año: numeric
+    Mes: month
+  optional:                        # si falta: advertencia
+    Vía: text
+    Región dos: text
+    Agrupación Residencia: text
+  missing_sentinels: ["0", "", "nan", "NaN", "N/D", "-"]   # equivalen a "sin dato" en dimensiones
+
+# Filtros de población de referencia (turistas y excursionistas no residentes).
+# CONFIRMAR: en el Lab 2 los define lstm_lab2.data._reference_population.
+filters: []
+#  - {column: "Tipo de viajero", values: ["Turista", "Excursionista"]}
+
+periods:
+  expected_start: "2009-01"        # primer mes que debería existir en la fuente
+  expected_end: "2026-06"          # último mes esperado (cobertura configurada)
+  fit:  {start: "2009-01", end: "2023-12"}   # PROPUESTA: período de ajuste
+  eval: {start: "2024-01", end: "2025-12"}   # PROPUESTA: período de evaluación (rolling origin)
+
+parameters:
+  allocation_factor: null          # CONFIRMAR: factor de reparto según la guía del proyecto
+  baseline: last_observed          # referencias previstas: last_observed | historical_mean
+
+quality:
+  columns:
+    max_unparseable_frac: 0.0      # tipo incompatible: fracción tolerada de valores no convertibles
+  dates:
+    max_invalid_frac: 0.001        # >0 advierte; por encima de este umbral detiene
+  coverage:
+    required_ranges: [fit, eval]   # meses sin datos aquí detienen el flujo
+    allowed_missing_months: []     # huecos conocidos y documentados, p. ej. ["2026-01", "2026-02"]
+  uniqueness:
+    key: [__fecha__, Vía, Región dos, Agrupación Residencia]   # clave y granularidad de la fuente
+    max_duplicate_frac: 0.0        # cualquier duplicado detiene
+  missing:
+    blocking: [Viajero]            # faltante aquí impide estimar
+    max_blocking_frac: 0.0
+    allowed: [Vía, Región dos, Agrupación Residencia]   # se etiquetan "Sin dato"
+    max_allowed_frac: 0.05         # >0 advierte; por encima detiene
+  values:
+    zero_total: fail               # fail | warn — total mensual = 0 (denominador del reparto)
+  methodology:
+    reconciliation_rel_tol: 1.0e-9 # la serie mensual debe cuadrar con la suma de la fuente mensual

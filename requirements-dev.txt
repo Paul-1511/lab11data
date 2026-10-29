@@ -1,0 +1,2 @@
+# Dependencias de desarrollo (Lab 11)
+pytest>=8.0

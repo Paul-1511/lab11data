@@ -1,0 +1,35 @@
+digraph G {
+  rankdir=LR; fontname="Helvetica"; nodesep=0.35; ranksep=0.45;
+  node [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", fillcolor="#F6F8F9", color="#5B6B76"];
+  edge [fontname="Helvetica", fontsize=9, color="#5B6B76"];
+
+  fuente [label="Fuente mensual\n(Excel montado,\nfuera de Git/Docker)", shape=cylinder, fillcolor="#FFFFFF"];
+  lectura [label="1. Lectura\n+ huella SHA-256"];
+  val [label="2. VALIDACIÓN DE DATOS\nControles a–e", fillcolor="#D9F0EC", color="#0F766E", penwidth=2];
+  prep [label="3. Preparación\nserie mensual\n(sin rellenar con 0)"];
+  metodo [label="Control f\nregla metodológica", fillcolor="#D9F0EC", color="#0F766E", penwidth=2];
+  gate [label="COMPUERTA\n¿algún control\ncrítico falló?", shape=diamond, fillcolor="#FFF4E0", color="#C2672B", penwidth=2];
+  stop [label="DETENER\nreporte + registro de ejecución\nlo publicado NO cambia", fillcolor="#F8E1E4", color="#B23A48", penwidth=2];
+
+  ajuste [label="4. Ajuste del modelo /\ncálculo de parámetros", style="rounded,dashed,filled"];
+  eval [label="5. EVALUACIÓN TEMPORAL\nMAE/RMSE vs. referencia", style="rounded,dashed,filled", fillcolor="#D9F0EC", color="#0F766E"];
+  acepta [label="6. REGLA DE ACEPTACIÓN\n(autoriza publicación)", style="rounded,dashed,filled", fillcolor="#FFF4E0", color="#C2672B"];
+  mlflow [label="7. Registro MLflow", style="rounded,dashed,filled"];
+  pub [label="8. Publicación\nversión aprobada", style="rounded,dashed,filled"];
+  pubdir [label="published/current\n(+ versiones previas)", shape=folder, style="dashed,filled", fillcolor="#FFFFFF"];
+  tablero [label="Tablero Streamlit\n(solo lee la versión\naprobada)", style="rounded,dashed,filled"];
+
+  fuente -> lectura -> val -> prep -> metodo -> gate;
+  val -> gate [style=dotted, label="a–e en FAIL\n(prep. omitida)", constraint=false];
+  gate -> stop [label="sí", color="#B23A48", fontcolor="#B23A48"];
+  gate -> ajuste [label="no"];
+  ajuste -> eval -> acepta;
+  acepta -> mlflow [label="aceptada"];
+  acepta -> stop [label="rechazada", color="#B23A48", fontcolor="#B23A48", constraint=false];
+  mlflow -> pub -> pubdir -> tablero;
+
+  subgraph cluster_legend { label="Leyenda"; fontsize=10; color="#E3E9ED";
+    l1 [label="Implementado en el avance", fillcolor="#FFFFFF"];
+    l2 [label="Pendiente (entrega final)", style="rounded,dashed,filled", fillcolor="#FFFFFF"];
+    l1 -> l2 [style=invis]; }
+}

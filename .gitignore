@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.streamlit/secrets.toml
+.DS_Store
+.venv/
+venv/
+
+# Lab 11: datos institucionales y resultados de ejecuciones no se versionan
+data/raw/
+artifacts/
