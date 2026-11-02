@@ -36,13 +36,18 @@ una ejecución. Un candidato queda **aceptado** solamente si se cumplen todas
 estas condiciones:
 
 1. ningún control de calidad tiene estado `FAIL`;
-2. existen resultados candidatos completos, sin valores faltantes, y con todos
-   los metadatos obligatorios;
+2. los resultados candidatos cumplen el contrato de estimaciones
+   (`pipeline/contract.py`, descrito en `CONTRATO_RESULTADOS.md`): columnas
+   obligatorias, valores finitos y no negativos, períodos mensuales sin
+   duplicados, destino, unidad, `run_id`, fecha de generación y versión
+   consistentes, y horizonte completo;
 3. hay al menos seis meses evaluados;
 4. el MAE del candidato no supera el 110 % del MAE de la referencia.
 
 La decisión y sus verificaciones se guardan en
-`decision_aceptacion.json`. Una decisión aceptada **solo autoriza** la
+`decision_aceptacion.json`, junto con el resultado estructurado del contrato
+(clave `contrato`). Los umbrales y las métricas no cambian con la validación
+del contrato. Una decisión aceptada **solo autoriza** la
 publicación: el módulo de publicación controlada es responsable de mover una
 versión a `published/current` y de conservar la versión anterior.
 
@@ -54,8 +59,10 @@ Cada ejecución sin fallos críticos escribe:
   período evaluado;
 - `estimaciones_candidatas.csv`: observaciones disponibles más las proyecciones
   de julio a diciembre de 2026;
-- `decision_aceptacion.json`: regla, métricas, verificaciones y motivos de
-  rechazo si aplica.
+- `decision_aceptacion.json`: regla, métricas, verificaciones, resultado del
+  contrato y motivos de rechazo si aplica;
+- `metadata.json`: identificación, fuente, períodos, métricas, controles,
+  decisión y limitaciones de la ejecución.
 
 Las estimaciones incluyen `destino`, `periodo`, `tipo`, `valor`, `unidad`,
 `run_id`, `fecha_generacion` y `version_procedimiento`, además del método.

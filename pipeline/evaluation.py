@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 import numpy as np
 import pandas as pd
 
+from .contract import validate_estimates
 from .dates import month_range
 
 
@@ -135,13 +136,22 @@ def candidate_results(total: pd.DataFrame, cfg: dict, run_id: str, version: str)
                    "version_procedimiento", "metodo"]]
 
 
-def acceptance_decision(quality_status: str, metrics: dict, candidates: pd.DataFrame, cfg: dict) -> dict:
-    """Regla fija de aceptación; no cambia según el resultado de una ejecución."""
+def acceptance_decision(
+    quality_status: str,
+    metrics: dict,
+    candidates: pd.DataFrame,
+    cfg: dict,
+    run_id: str | None = None,
+    version: str | None = None,
+) -> dict:
+    """Regla fija de aceptación; no cambia según el resultado de una ejecución.
+
+    `salidas_completas` exige que las estimaciones cumplan el contrato de
+    `pipeline.contract`. Los umbrales y las métricas conservan su semántica.
+    """
     rule = cfg["acceptance"]
-    required = {"destino", "periodo", "tipo", "valor", "unidad", "run_id", "fecha_generacion", "version_procedimiento"}
-    outputs_complete = bool(
-        required.issubset(candidates.columns) and not candidates.empty and candidates["valor"].notna().all()
-    )
+    contract = validate_estimates(candidates, cfg, run_id=run_id, version=version)
+    outputs_complete = contract.valid
     enough_months = bool(metrics["meses_evaluados"] >= rule["min_evaluated_months"])
     candidate_mae, baseline_mae = metrics["mae_estimacion"], metrics["mae_referencia"]
     performance_ok = bool(
@@ -163,6 +173,7 @@ def acceptance_decision(quality_status: str, metrics: dict, candidates: pd.DataF
         },
         "verificaciones": checks,
         "motivos_rechazo": failed,
+        "contrato": contract.to_dict(),
         "metricas": metrics,
         "nota": "La publicación la implementa el siguiente módulo; esta decisión solo autoriza o bloquea el candidato.",
     }

@@ -10,7 +10,7 @@ Estado: **AVANCE (29/oct/2026)**. Los puntos marcados **CONFIRMAR** son decision
 | Variable | Ingreso mensual de visitantes no residentes a Guatemala: **Turista + Excursionista** |
 | Unidad | Visitantes por mes (la fuente trae decimales: son estimaciones expandidas de encuesta, no conteos exactos) |
 | Nivel de agregación | Mes × total del destino; desgloses por vía de ingreso, región de origen (`Región dos`) y agrupación de residencia |
-| Destino | Guatemala (total país). **CONFIRMAR** que coincide con el destino asignado al grupo |
+| Destino | Guatemala (total país). Es el destino de trabajo; no se afirma que sea el destino asignado oficialmente |
 | Fuente | `Base_Migracion_2009-2026jun.xlsx`, hoja `Datos` (la misma del Laboratorio 2; la hoja `Notas` documenta la fuente). 161,036 filas, 13 columnas. Se coloca en `data/raw/` o se indica con `--data`; no se versiona ni se incluye en imágenes Docker |
 | Columnas usadas | `Año`, `Mes cod` (fecha), `Viajero` (medida), `Tipo de Viajero` (población), `Vía`, `Frontera`, `País`, `Región dos`, `Agrupación Residencia` |
 | Población de referencia | `Tipo de Viajero` ∈ {Turista, Excursionista}. Según `Notas`, «Viajero» (cruce fronterizo sin ser visitante) no cuenta como visitante y «Cruceristas» solo existe hasta 2022. Pasan 137,642 de 161,036 filas |
@@ -25,7 +25,7 @@ Estado: **AVANCE (29/oct/2026)**. Los puntos marcados **CONFIRMAR** son decision
 | Ajuste | 2023-01 a 2024-12 como ventana inicial (se expande mes a mes) — propuesta |
 | Evaluación | 2025-01 a 2025-12, origen móvil: cada mes se estima solo con datos anteriores — propuesta |
 | Referencia sencilla | Último valor observado; promedio histórico con datos previos al mes evaluado |
-| Factor de reparto | **CONFIRMAR**: definir según la guía del proyecto; hoy `parameters.allocation_factor: null` |
+| Factor de reparto | No aplica al indicador implementado: `parameters.allocation_factor` es `null` y ningún módulo de `pipeline/` lo lee. El procedimiento suma las filas de la población de referencia para el destino configurado y no distribuye visitantes entre destinos (`pipeline.prepare.prepare`). Solo habría que definirlo si se estimara una parte de un total nacional para un destino subnacional; en ese caso faltaría la definición de la guía del proyecto de qué se reparte y entre qué destinos |
 | Semilla | 42 (`run.seed`) |
 
 **Por qué 2023 en adelante.** `Notas` indica tres tramos de fuente y un quiebre metodológico 2022→2023 (sistema depurado del INGUAT, que excluye compradores fronterizos frecuentes y ajusta arribos marítimos): los niveles no son comparables con 2022 hacia atrás. Además, 2020–2021 es el piso de la pandemia (~27 % de 2019). Por eso el ajuste y la evaluación usan solo el tramo homogéneo; los meses previos a 2023 se leen y validan pero no son obligatorios (sin datos ahí solo habría advertencia).
@@ -58,11 +58,12 @@ Supuestos: los meses sin cobertura no se convierten en cero (quedan vacíos y ma
 | `periodo` | Mes (AAAA-MM-01) |
 | `tipo` | `observado` o `estimado` |
 | `valor`, `unidad` | Cifra y unidad (visitantes por mes) |
-| `run_id` | Identificador de la ejecución en MLflow/registro |
+| `run_id` | Identificador de la ejecución del pipeline (será el identificador de la versión publicada) |
 | `fecha_generacion` | Fecha y hora UTC |
 | `version_procedimiento` | Versión del procedimiento (`pipeline.__version__`) |
+| `metodo` | Procedimiento de estimación (`seasonal_naive`) |
 
-Junto a él: `metadata.json` con la métrica de validación, los meses evaluados, el commit y la huella de la fuente.
+Junto a él: `metadata.json` con la métrica de validación, los meses evaluados, el commit y la huella de la fuente. El contrato completo, sus validaciones y el esquema de `metadata.json` están en [`CONTRATO_RESULTADOS.md`](CONTRATO_RESULTADOS.md). Ya se generan `estimaciones_candidatas.csv` y `metadata.json` en la carpeta de cada ejecución; `published/current/` todavía no existe.
 
 ## 6. Diagrama
 
@@ -73,4 +74,5 @@ Ver `docs/diagrama_flujo.png` (fuente: `docs/flujo.dot`). Se valida en los contr
 ## 7. Qué incluye el avance y qué falta
 
 Implementado: lectura con huella digital, población de referencia, seis controles de calidad con reporte, preparación sin relleno de ceros, compuerta que detiene antes de publicar, registro por ejecución, estimación estacional ingenua, validación temporal, comparación contra referencia, regla de aceptación y resultados candidatos versionados por ejecución. Verificado con el Excel real (210 meses, suma idéntica a un cálculo independiente: 46,711,912.89 visitantes) y con copias del Excel real con fallas inyectadas.
+Se añadió además el contrato formal de las estimaciones con su validador, la clasificación explícita de la fuente (sintética, institucional o no declarada) y `metadata.json` por ejecución (ver `CONTRATO_RESULTADOS.md`).
 Pendiente (entrega final): MLflow, publicación versionada y restauración, lectura del tablero, monitoreo, Docker, README operativo completo e informe técnico final.

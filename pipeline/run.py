@@ -26,6 +26,7 @@ from .config import ROOT, load_config, resolve
 from .dates import build_dates
 from .evaluation import acceptance_decision, candidate_results, evaluate_temporally
 from .io import apply_filters, fingerprint, read_source
+from .metadata import SOURCE_KINDS, build_metadata, classify_source, write_metadata
 from .prepare import prepare, save_prepared
 from .report import overall_status, write_quality_report
 
@@ -48,6 +49,18 @@ def _git_commit() -> str:
         return "sin-git"
 
 
+def _git_tree_modified() -> bool | None:
+    """True si hay cambios sin confirmar: entonces el commit no identifica el código ejecutado."""
+    try:
+        out = subprocess.run(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            cwd=ROOT, capture_output=True, text=True, check=True,
+        )
+        return bool(out.stdout.strip())
+    except Exception:
+        return None
+
+
 class RunLog:
     """Registro por ejecución: horas, etapas, advertencias, errores y publicación."""
 
@@ -56,6 +69,7 @@ class RunLog:
             "run_id": run_id,
             "version_procedimiento": __version__,
             "commit_git": _git_commit(),
+            "arbol_git_modificado": _git_tree_modified(),
             "config": cfg["_meta"],
             "semilla": cfg["run"]["seed"],
             "inicio": _now(),
@@ -83,7 +97,12 @@ class RunLog:
         self.data["etapas"].append({"etapa": name, "estado": reason})
 
 
-def execute(cfg: dict, data_path: str | None = None, run_id: str | None = None) -> dict:
+def execute(
+    cfg: dict,
+    data_path: str | None = None,
+    run_id: str | None = None,
+    source_kind: str | None = None,
+) -> dict:
     run_id = run_id or f"{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}-{uuid.uuid4().hex[:6]}"
     run_dir = resolve(cfg["run"]["output_dir"]) / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -96,6 +115,13 @@ def execute(cfg: dict, data_path: str | None = None, run_id: str | None = None) 
         with log.stage("lectura"):
             src = resolve(data_path or cfg["source"]["path"])
             log.data["fuente"] = fingerprint(src)
+            log.data["fuente"]["nombre_archivo"] = src.name
+            log.data["fuente"].update(
+                classify_source(
+                    cfg, log.data["fuente"]["sha256"],
+                    declared=source_kind, path_overridden=data_path is not None,
+                )
+            )
             df = read_source(src, cfg)
             log.data["fuente"]["filas"] = len(df)
 
@@ -162,7 +188,9 @@ def execute(cfg: dict, data_path: str | None = None, run_id: str | None = None) 
                 log.data["salidas"]["estimaciones_candidatas"] = str(candidate_path)
 
             with log.stage("regla_aceptacion"):
-                decision = acceptance_decision(overall_status(results), metrics, candidates, cfg)
+                decision = acceptance_decision(
+                    overall_status(results), metrics, candidates, cfg, run_id=run_id, version=__version__
+                )
                 decision_path = run_dir / "decision_aceptacion.json"
                 decision_path.write_text(json.dumps(decision, ensure_ascii=False, indent=2), encoding="utf-8")
                 log.data["salidas"]["decision_aceptacion"] = str(decision_path)
@@ -171,8 +199,17 @@ def execute(cfg: dict, data_path: str | None = None, run_id: str | None = None) 
                     log.data["publicacion"] = "autorizada por la regla; pendiente de publicación controlada"
                 else:
                     log.data["publicacion"] = "bloqueada por la regla de aceptación; resultados publicados sin cambios"
+
+            with log.stage("metadatos"):
+                meta = build_metadata(
+                    cfg, log.data, results, candidates, decision,
+                    candidates_sha256=fingerprint(candidate_path)["sha256"],
+                )
+                meta_path = run_dir / "metadata.json"
+                write_metadata(meta, meta_path)
+                log.data["salidas"]["metadatos"] = str(meta_path)
         else:
-            for name in ("estimacion_y_evaluacion", "estimaciones_candidatas", "regla_aceptacion"):
+            for name in ("estimacion_y_evaluacion", "estimaciones_candidatas", "regla_aceptacion", "metadatos"):
                 log.skip(name, "omitida por compuerta de calidad")
 
         # 7) Etapas posteriores -----------------------------------------------
@@ -198,10 +235,12 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Pipeline del Observatorio de Turismo (Lab 11)")
     ap.add_argument("--config", default="config/config.yaml")
     ap.add_argument("--data", default=None, help="ruta de la fuente (reemplaza source.path)")
+    ap.add_argument("--source-kind", choices=SOURCE_KINDS, default=None,
+                    help="declara si la fuente es sintetica o institucional")
     args = ap.parse_args(argv)
 
     cfg = load_config(args.config)
-    out = execute(cfg, data_path=args.data)
+    out = execute(cfg, data_path=args.data, source_kind=args.source_kind)
 
     print(f"Ejecución {out['run_id']}  →  {out['run_dir']}")
     for r in out["results"]:

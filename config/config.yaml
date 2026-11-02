@@ -12,7 +12,7 @@ run:
 
 target:
   name: ingreso_mensual_visitantes_no_residentes
-  destination: Guatemala           # CONFIRMAR: destino asignado al grupo
+  destination: Guatemala           # destino de trabajo: total nacional; no se afirma que sea el destino asignado oficialmente
   unit: visitantes por mes
   granularity: monthly             # la variable se estima por mes
   breakdowns: [via, region, residencia]   # niveles adicionales de agregación
@@ -24,6 +24,13 @@ source:
   path: data/raw/Base_Migracion_2009-2026jun.xlsx
   sheet: Datos                     # solo aplica a Excel
   granularity: monthly             # la fuente es mensual (no presencias diarias)
+  # Declaración del archivo de source.path: institucional | sintetica. Si la ruta se reemplaza con
+  # --data esta declaración no se aplica; se indica con --source-kind o queda "no_declarada".
+  kind: institucional
+  # Huellas SHA-256 de archivos sintéticos conocidos. Una fuente con una de estas huellas se
+  # clasifica siempre como sintética, aunque se declare otra cosa (nunca se presenta como institucional).
+  synthetic_sha256:
+    - 27f79fa77eae5751f46e15e3e11d807b5024195e170a1beadfa6da485fad2afc   # data/synthetic/base_sintetica.csv
 
 columns:
   # Nombres tal como aparecen en la hoja "Datos" del Excel.
@@ -69,7 +76,7 @@ parameters:
   estimator: seasonal_naive        # candidato: valor del mismo mes del año anterior
   seasonal_period: 12              # meses; preserva la estacionalidad sin reentrenar un modelo
   baseline: last_observed          # referencia: last_observed | historical_mean
-  allocation_factor: null          # no aplica al total mensual; reservar si se estima un desglose en el futuro
+  allocation_factor: null          # sin uso: el indicador es un total nacional y ningún módulo lo lee (ver docs/ALCANCE.md §2)
 
 acceptance:
   # Regla fija: calidad sin FAIL, salidas completas, ≥6 meses comparables y

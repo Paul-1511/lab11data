@@ -86,6 +86,21 @@ ninguna versión en `published/`.
 La regla y el horizonte están en `config/config.yaml`. La metodología completa
 está en [`docs/EVALUACION_Y_ACEPTACION.md`](docs/EVALUACION_Y_ACEPTACION.md).
 
+## Contrato de resultados y metadatos
+
+Cada ejecución sin fallos críticos escribe además `metadata.json`, y la regla de
+aceptación exige que las estimaciones cumplan el contrato de
+[`docs/CONTRATO_RESULTADOS.md`](docs/CONTRATO_RESULTADOS.md). La fuente se
+clasifica como sintética, institucional o no declarada; al usar `--data` con un
+archivo propio, declárela con `--source-kind sintetica` o `--source-kind institucional`:
+
+```bash
+python -m pipeline.run --data data/synthetic/base_sintetica.csv --source-kind sintetica
+```
+
+Los resultados de una fuente sintética o no declarada no deben presentarse como
+cifras institucionales.
+
 ## Pruebas
 
 ```bash
