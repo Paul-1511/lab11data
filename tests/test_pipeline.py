@@ -15,6 +15,7 @@ from make_synthetic_data import FAULTS, inject_fault, make_synthetic  # noqa: E4
 
 from pipeline.config import load_config  # noqa: E402
 from pipeline.dates import build_dates  # noqa: E402
+from pipeline.evaluation import acceptance_decision, evaluate_temporally  # noqa: E402
 from pipeline.io import apply_filters  # noqa: E402
 from pipeline.prepare import prepare  # noqa: E402
 from pipeline.run import execute  # noqa: E402
@@ -164,8 +165,32 @@ def test_pipeline_ok_exit_0_and_report_written(good, cfg, tmp_path):
     run_dir = Path(out["run_dir"])
     assert out["exit_code"] == 0
     for f in ("quality_report.json", "quality_report.md", "run_log.json",
-              "serie_mensual_total.csv", "config_snapshot.yaml"):
+              "serie_mensual_total.csv", "config_snapshot.yaml", "evaluacion_temporal.csv",
+              "estimaciones_candidatas.csv", "decision_aceptacion.json"):
         assert (run_dir / f).exists()
+    assert out["log"]["aceptacion"]["aceptada"]
+
+
+def test_temporal_evaluation_does_not_use_the_target_month(good, cfg):
+    """Cambiar el valor observado del mes evaluado no puede cambiar su predicción."""
+    population = apply_filters(good, cfg)[0]
+    total = prepare(population, build_dates(population, cfg), cfg)["total"]
+    before, _ = evaluate_temporally(total, cfg)
+    changed = total.copy()
+    changed.loc[changed["fecha"] == pd.Timestamp("2025-01-01"), "valor"] = 999_999.0
+    after, _ = evaluate_temporally(changed, cfg)
+    first_before = before.loc[before["periodo"] == pd.Timestamp("2025-01-01")].iloc[0]
+    first_after = after.loc[after["periodo"] == pd.Timestamp("2025-01-01")].iloc[0]
+    assert first_before["estimacion"] == first_after["estimacion"]
+    assert first_before["referencia"] == first_after["referencia"]
+    assert first_before["observado"] != first_after["observado"]
+
+
+def test_acceptance_rejects_incomplete_candidate_outputs(cfg):
+    metrics = {"meses_evaluados": 12, "mae_estimacion": 1.0, "mae_referencia": 2.0}
+    decision = acceptance_decision("PASS", metrics, pd.DataFrame(), cfg)
+    assert not decision["aceptada"]
+    assert "salidas_completas" in decision["motivos_rechazo"]
 
 
 @pytest.mark.parametrize("fault", [f for f in FAULTS])
@@ -184,6 +209,14 @@ def test_pipeline_stops_on_every_fault_without_publishing(good, cfg, tmp_path, f
 def test_pipeline_missing_source_is_error_not_publication(cfg, tmp_path):
     out = execute(cfg, data_path=str(tmp_path / "no_existe.csv"))
     assert out["exit_code"] == 1 and out["log"]["errores"]
+
+
+def test_committed_synthetic_example_runs_end_to_end(cfg):
+    """El ejemplo incluido en el repositorio debe ejecutar todas las etapas disponibles."""
+    sample = ROOT / "data" / "synthetic" / "base_sintetica.csv"
+    out = execute(cfg, data_path=str(sample), run_id="ejemplo-sintetico")
+    assert out["exit_code"] == 0
+    assert out["log"]["aceptacion"]["aceptada"]
 
 
 # ---- Población de referencia y granularidad real ------------------------------

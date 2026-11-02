@@ -24,13 +24,14 @@ from .checks import (
 )
 from .config import ROOT, load_config, resolve
 from .dates import build_dates
+from .evaluation import acceptance_decision, candidate_results, evaluate_temporally
 from .io import apply_filters, fingerprint, read_source
 from .prepare import prepare, save_prepared
 from .report import overall_status, write_quality_report
 
-# Etapas que se implementan después del avance. Se registran como pendientes:
-# no se inventan métricas ni se publica nada hasta que existan.
-PENDING_STAGES = ["ajuste_modelo", "evaluacion", "estimaciones", "registro_mlflow", "publicacion"]
+# Estas etapas se implementan en los módulos siguientes. La aceptación genera
+# una autorización, pero no publica ni registra en MLflow por sí sola.
+PENDING_STAGES = ["registro_mlflow", "publicacion"]
 
 
 def _now() -> str:
@@ -145,12 +146,39 @@ def execute(cfg: dict, data_path: str | None = None, run_id: str | None = None) 
                 log.data["errores"].append(f"controles críticos fallidos: {failed}")
                 log.data["publicacion"] = "bloqueada por control crítico; resultados publicados sin cambios"
 
-        # 6) Etapas posteriores al avance ---------------------------------------
+        # 6) Estimación, evaluación y aceptación --------------------------------
+        if exit_code == 0:
+            with log.stage("estimacion_y_evaluacion"):
+                evaluation, metrics = evaluate_temporally(prepared["total"], cfg)
+                evaluation_path = run_dir / "evaluacion_temporal.csv"
+                evaluation.to_csv(evaluation_path, index=False, date_format="%Y-%m-%d")
+                log.data["salidas"]["evaluacion_temporal"] = str(evaluation_path)
+                log.data["metricas"] = metrics
+
+            with log.stage("estimaciones_candidatas"):
+                candidates = candidate_results(prepared["total"], cfg, run_id, __version__)
+                candidate_path = run_dir / "estimaciones_candidatas.csv"
+                candidates.to_csv(candidate_path, index=False, date_format="%Y-%m-%d")
+                log.data["salidas"]["estimaciones_candidatas"] = str(candidate_path)
+
+            with log.stage("regla_aceptacion"):
+                decision = acceptance_decision(overall_status(results), metrics, candidates, cfg)
+                decision_path = run_dir / "decision_aceptacion.json"
+                decision_path.write_text(json.dumps(decision, ensure_ascii=False, indent=2), encoding="utf-8")
+                log.data["salidas"]["decision_aceptacion"] = str(decision_path)
+                log.data["aceptacion"] = decision
+                if decision["aceptada"]:
+                    log.data["publicacion"] = "autorizada por la regla; pendiente de publicación controlada"
+                else:
+                    log.data["publicacion"] = "bloqueada por la regla de aceptación; resultados publicados sin cambios"
+        else:
+            for name in ("estimacion_y_evaluacion", "estimaciones_candidatas", "regla_aceptacion"):
+                log.skip(name, "omitida por compuerta de calidad")
+
+        # 7) Etapas posteriores -----------------------------------------------
         for name in PENDING_STAGES:
             reason = "omitida por compuerta de calidad" if exit_code == 2 else "pendiente (fuera del avance)"
             log.skip(name, reason)
-        if exit_code == 0:
-            log.data["publicacion"] = "pendiente de implementar; resultados publicados sin cambios"
     except Exception as exc:  # error inesperado: no se toca lo publicado
         exit_code = 1
         if not log.data["errores"]:
