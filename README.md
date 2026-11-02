@@ -101,6 +101,19 @@ python -m pipeline.run --data data/synthetic/base_sintetica.csv --source-kind si
 Los resultados de una fuente sintética o no declarada no deben presentarse como
 cifras institucionales.
 
+## Registro en MLflow
+
+Cada ejecución (aceptada, rechazada, detenida por calidad o con error) se registra en MLflow Tracking local:
+base SQLite en `mlflow/mlflow.db` y artefactos en `mlflow/artifacts/`, ambos fuera de Git. Configuración,
+estados y consulta en [`docs/MLFLOW.md`](docs/MLFLOW.md). La publicación controlada y la restauración todavía no están implementadas.
+
+```bash
+python -m pipeline.run --data data/synthetic/base_sintetica.csv --source-kind sintetica
+python -m mlflow ui --backend-store-uri sqlite:///mlflow/mlflow.db
+```
+
+`LAB11_MLFLOW_DIR` cambia la carpeta base y `LAB11_MLFLOW_ENABLED=0` desactiva el registro.
+
 ## Pruebas
 
 ```bash

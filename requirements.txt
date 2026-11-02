@@ -9,3 +9,4 @@ openpyxl>=3.1
 
 # Lab 11
 pyyaml>=6.0
+mlflow>=2.14

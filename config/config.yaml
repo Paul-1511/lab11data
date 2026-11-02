@@ -10,6 +10,16 @@ run:
   output_dir: artifacts/runs       # una carpeta por ejecución (run_id)
   published_dir: published         # versiones aprobadas que lee el tablero
 
+mlflow:
+  # MLflow Tracking local: base SQLite y artefactos en carpetas relativas a la raíz del repositorio.
+  # LAB11_MLFLOW_DIR reemplaza `dir` (por ejemplo, un volumen montado en Docker) y
+  # LAB11_MLFLOW_ENABLED=0 desactiva el registro.
+  enabled: true
+  experiment: observatorio_turismo_guatemala
+  dir: mlflow
+  db_file: mlflow.db               # <dir>/mlflow.db
+  artifacts_dir: artifacts         # <dir>/artifacts
+
 target:
   name: ingreso_mensual_visitantes_no_residentes
   destination: Guatemala           # destino de trabajo: total nacional; no se afirma que sea el destino asignado oficialmente

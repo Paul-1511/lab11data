@@ -75,4 +75,5 @@ Ver `docs/diagrama_flujo.png` (fuente: `docs/flujo.dot`). Se valida en los contr
 
 Implementado: lectura con huella digital, población de referencia, seis controles de calidad con reporte, preparación sin relleno de ceros, compuerta que detiene antes de publicar, registro por ejecución, estimación estacional ingenua, validación temporal, comparación contra referencia, regla de aceptación y resultados candidatos versionados por ejecución. Verificado con el Excel real (210 meses, suma idéntica a un cálculo independiente: 46,711,912.89 visitantes) y con copias del Excel real con fallas inyectadas.
 Se añadió además el contrato formal de las estimaciones con su validador, la clasificación explícita de la fuente (sintética, institucional o no declarada) y `metadata.json` por ejecución (ver `CONTRATO_RESULTADOS.md`).
-Pendiente (entrega final): MLflow, publicación versionada y restauración, lectura del tablero, monitoreo, Docker, README operativo completo e informe técnico final.
+El registro de cada ejecución en MLflow Tracking local (SQLite) está implementado; ver `MLFLOW.md`.
+Pendiente (entrega final): publicación versionada y restauración, lectura del tablero, monitoreo, Docker, README operativo completo e informe técnico final.

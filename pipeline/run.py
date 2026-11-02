@@ -29,10 +29,12 @@ from .io import apply_filters, fingerprint, read_source
 from .metadata import SOURCE_KINDS, build_metadata, classify_source, write_metadata
 from .prepare import prepare, save_prepared
 from .report import overall_status, write_quality_report
+from .tracking import Tracker
 
-# Estas etapas se implementan en los módulos siguientes. La aceptación genera
-# una autorización, pero no publica ni registra en MLflow por sí sola.
-PENDING_STAGES = ["registro_mlflow", "publicacion"]
+# La publicación se implementa en un módulo posterior. La aceptación genera una
+# autorización, pero no publica por sí sola. El registro en MLflow no es una etapa
+# del flujo: se abre al inicio y se cierra en el bloque finally de `execute`.
+PENDING_STAGES = ["publicacion"]
 
 
 def _now() -> str:
@@ -109,7 +111,11 @@ def execute(
     shutil.copy(cfg["_meta"]["path"], run_dir / "config_snapshot.yaml")
 
     log = RunLog(run_id, cfg)
-    results, exit_code = [], 0
+    tracker = Tracker.start(
+        cfg, run_id, version=__version__,
+        commit=log.data["commit_git"], tree_modified=log.data["arbol_git_modificado"],
+    )
+    results, exit_code, completed = [], 0, False
     try:
         # 1) Lectura ---------------------------------------------------------
         with log.stage("lectura"):
@@ -205,6 +211,7 @@ def execute(
                     cfg, log.data, results, candidates, decision,
                     candidates_sha256=fingerprint(candidate_path)["sha256"],
                 )
+                meta["mlflow"] = tracker.ids()
                 meta_path = run_dir / "metadata.json"
                 write_metadata(meta, meta_path)
                 log.data["salidas"]["metadatos"] = str(meta_path)
@@ -216,6 +223,7 @@ def execute(
         for name in PENDING_STAGES:
             reason = "omitida por compuerta de calidad" if exit_code == 2 else "pendiente (fuera del avance)"
             log.skip(name, reason)
+        completed = True
     except Exception as exc:  # error inesperado: no se toca lo publicado
         exit_code = 1
         if not log.data["errores"]:
@@ -224,6 +232,18 @@ def execute(
     finally:
         log.data["fin"] = _now()
         log.data["codigo_salida"] = exit_code
+        tracking_started = _now()
+        log.data["mlflow"] = tracker.finalize(
+            log.data, results, run_dir, exit_code=exit_code, interrupted=not completed and exit_code == 0
+        )
+        log.data["etapas"].append({
+            "etapa": "registro_mlflow", "inicio": tracking_started, "fin": _now(),
+            "estado": log.data["mlflow"]["trazabilidad"],
+        })
+        if log.data["mlflow"]["errores"]:
+            log.data["advertencias"].append(
+                "mlflow: la ejecución no quedó completamente trazable; ver mlflow.errores en run_log.json"
+            )
         (run_dir / "run_log.json").write_text(
             json.dumps(log.data, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
         )
@@ -248,6 +268,10 @@ def main(argv: list[str] | None = None) -> int:
     for e in out["log"]["errores"]:
         print(f"  ERROR: {e}", file=sys.stderr)
     print(f"Publicación: {out['log']['publicacion']}")
+    tracking = out["log"]["mlflow"]
+    print(f"MLflow: trazabilidad {tracking['trazabilidad']}" + (f" (run {tracking['run_id']})" if tracking["run_id"] else ""))
+    for e in tracking["errores"]:
+        print(f"  MLFLOW: {e}", file=sys.stderr)
     return out["exit_code"]
 
 

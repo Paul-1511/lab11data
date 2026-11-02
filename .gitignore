@@ -8,3 +8,9 @@ venv/
 # Lab 11: datos institucionales y resultados de ejecuciones no se versionan
 data/raw/
 artifacts/
+
+# Lab 11: MLflow local (base SQLite y artefactos)
+mlflow/
+mlruns/
+*.db
+*.sqlite
