@@ -63,10 +63,19 @@ periods:
   # así que el ajuste y la evaluación usan solo el tramo homogéneo 2023-01 en adelante.
   fit:  {start: "2023-01", end: "2024-12"}   # ventana inicial de ajuste (se expande mes a mes)
   eval: {start: "2025-01", end: "2025-12"}   # evaluación con origen móvil: cada mes se estima con datos previos
+  forecast: {start: "2026-07", end: "2026-12"} # horizonte que se entrega como candidato; no tiene observaciones comparables
 
 parameters:
-  allocation_factor: null          # CONFIRMAR: factor de reparto según la guía del proyecto
-  baseline: last_observed          # referencias previstas: last_observed | historical_mean
+  estimator: seasonal_naive        # candidato: valor del mismo mes del año anterior
+  seasonal_period: 12              # meses; preserva la estacionalidad sin reentrenar un modelo
+  baseline: last_observed          # referencia: last_observed | historical_mean
+  allocation_factor: null          # no aplica al total mensual; reservar si se estima un desglose en el futuro
+
+acceptance:
+  # Regla fija: calidad sin FAIL, salidas completas, ≥6 meses comparables y
+  # MAE candidato no mayor que 10 % sobre la referencia. No se ajusta por ejecución.
+  min_evaluated_months: 6
+  max_mae_ratio_to_baseline: 1.10
 
 quality:
   columns:
