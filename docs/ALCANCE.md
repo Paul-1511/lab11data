@@ -72,5 +72,5 @@ Ver `docs/diagrama_flujo.png` (fuente: `docs/flujo.dot`). Se valida en los contr
 
 ## 7. Qué incluye el avance y qué falta
 
-Implementado: lectura con huella digital, población de referencia, seis controles de calidad con reporte, preparación sin relleno de ceros, compuerta que detiene antes de publicar, registro por ejecución, 31 pruebas automáticas. Verificado con el Excel real (210 meses, suma idéntica a un cálculo independiente: 46,711,912.89 visitantes) y con copias del Excel real con fallas inyectadas.
-Pendiente (entrega final): ajuste/estimación, evaluación temporal y regla de aceptación, MLflow, publicación versionada y restauración, lectura del tablero, monitoreo, Docker y README completo.
+Implementado: lectura con huella digital, población de referencia, seis controles de calidad con reporte, preparación sin relleno de ceros, compuerta que detiene antes de publicar, registro por ejecución, estimación estacional ingenua, validación temporal, comparación contra referencia, regla de aceptación y resultados candidatos versionados por ejecución. Verificado con el Excel real (210 meses, suma idéntica a un cálculo independiente: 46,711,912.89 visitantes) y con copias del Excel real con fallas inyectadas.
+Pendiente (entrega final): MLflow, publicación versionada y restauración, lectura del tablero, monitoreo, Docker, README operativo completo e informe técnico final.

@@ -74,6 +74,18 @@ python -m pipeline.run --data data/synthetic/base_sintetica.csv
 Código de salida: `0` completado, `2` control crítico fallido (nada se publica), `1` error inesperado.
 Cada ejecución crea `artifacts/runs/<run_id>/` con `quality_report.md|json`, `run_log.json`, `config_snapshot.yaml` y la serie preparada.
 
+## Estimación y aceptación
+
+Después de pasar los controles, el flujo calcula una estimación estacional
+ingenua, la evalúa sin usar datos futuros y la compara con la referencia de
+último valor observado. Genera `evaluacion_temporal.csv`,
+`estimaciones_candidatas.csv` y `decision_aceptacion.json` en la carpeta de la
+ejecución. La decisión aceptada autoriza la publicación; todavía no reemplaza
+ninguna versión en `published/`.
+
+La regla y el horizonte están en `config/config.yaml`. La metodología completa
+está en [`docs/EVALUACION_Y_ACEPTACION.md`](docs/EVALUACION_Y_ACEPTACION.md).
+
 ## Pruebas
 
 ```bash
