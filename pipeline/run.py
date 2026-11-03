@@ -28,13 +28,14 @@ from .evaluation import acceptance_decision, candidate_results, evaluate_tempora
 from .io import apply_filters, fingerprint, read_source
 from .metadata import SOURCE_KINDS, build_metadata, classify_source, write_metadata
 from .prepare import prepare, save_prepared
+from .publish import load_settings as load_publication_settings
+from .publish import publish_run
 from .report import overall_status, write_quality_report
 from .tracking import Tracker
 
-# La publicación se implementa en un módulo posterior. La aceptación genera una
-# autorización, pero no publica por sí sola. El registro en MLflow no es una etapa
-# del flujo: se abre al inicio y se cierra en el bloque finally de `execute`.
-PENDING_STAGES = ["publicacion"]
+# El registro en MLflow no es una etapa del flujo: se abre al inicio y se cierra en el
+# bloque finally de `execute`. La publicación solo se intenta si la regla de aceptación
+# autorizó el candidato; ver pipeline/publish.py.
 
 
 def _now() -> str:
@@ -202,7 +203,7 @@ def execute(
                 log.data["salidas"]["decision_aceptacion"] = str(decision_path)
                 log.data["aceptacion"] = decision
                 if decision["aceptada"]:
-                    log.data["publicacion"] = "autorizada por la regla; pendiente de publicación controlada"
+                    log.data["publicacion"] = "autorizada por la regla; pendiente de la publicación controlada"
                 else:
                     log.data["publicacion"] = "bloqueada por la regla de aceptación; resultados publicados sin cambios"
 
@@ -219,10 +220,24 @@ def execute(
             for name in ("estimacion_y_evaluacion", "estimaciones_candidatas", "regla_aceptacion", "metadatos"):
                 log.skip(name, "omitida por compuerta de calidad")
 
-        # 7) Etapas posteriores -----------------------------------------------
-        for name in PENDING_STAGES:
-            reason = "omitida por compuerta de calidad" if exit_code == 2 else "pendiente (fuera del avance)"
-            log.skip(name, reason)
+        # 7) Publicación controlada ----------------------------------------------
+        if exit_code != 0:
+            log.skip("publicacion", "omitida por compuerta de calidad")
+        elif not decision["aceptada"]:
+            log.skip("publicacion", "omitida: candidato rechazado por la regla de aceptación")
+        elif not load_publication_settings(cfg).enabled:
+            log.skip("publicacion", "deshabilitada")
+            log.data["publicacion"] = "autorizada por la regla; publicación deshabilitada"
+        else:
+            with log.stage("publicacion") as st:
+                outcome = publish_run(cfg, run_dir)
+                st["estado"] = outcome.estado
+                log.data["publicacion_detalle"] = outcome.to_dict()
+                log.data["publicacion"] = outcome.message()
+                log.data["advertencias"] += [f"publicacion: {w}" for w in outcome.advertencias]
+                if outcome.estado == "fallida":
+                    exit_code = 1
+                    log.data["errores"].append(f"publicación fallida: {', '.join(outcome.codes)}")
         completed = True
     except Exception as exc:  # error inesperado: no se toca lo publicado
         exit_code = 1

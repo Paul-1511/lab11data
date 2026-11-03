@@ -2,19 +2,22 @@ import os
 
 import pytest
 
-from pipeline.tracking import ENV_ENABLED
+from pipeline.publish import ENV_ENABLED as PUBLISH_ENABLED
+from pipeline.tracking import ENV_ENABLED as MLFLOW_ENABLED
 
 
 @pytest.fixture(scope="session", autouse=True)
-def mlflow_disabled_by_default():
-    """Las pruebas del pipeline no escriben en el almacén local de MLflow.
+def external_stores_disabled_by_default():
+    """Las pruebas del pipeline no escriben en el almacén de MLflow ni en published/.
 
-    Las pruebas de `test_tracking.py` lo activan con una carpeta temporal.
+    `test_tracking.py` y `test_publish.py` activan cada uno el suyo con carpetas temporales.
     """
-    previous = os.environ.get(ENV_ENABLED)
-    os.environ[ENV_ENABLED] = "0"
+    previous = {name: os.environ.get(name) for name in (MLFLOW_ENABLED, PUBLISH_ENABLED)}
+    for name in previous:
+        os.environ[name] = "0"
     yield
-    if previous is None:
-        os.environ.pop(ENV_ENABLED, None)
-    else:
-        os.environ[ENV_ENABLED] = previous
+    for name, value in previous.items():
+        if value is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = value

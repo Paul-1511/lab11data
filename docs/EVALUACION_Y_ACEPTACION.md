@@ -48,8 +48,11 @@ La decisión y sus verificaciones se guardan en
 `decision_aceptacion.json`, junto con el resultado estructurado del contrato
 (clave `contrato`). Los umbrales y las métricas no cambian con la validación
 del contrato. Una decisión aceptada **solo autoriza** la
-publicación: el módulo de publicación controlada es responsable de mover una
-versión a `published/current` y de conservar la versión anterior.
+publicación: el módulo de publicación controlada (`PUBLICACION.md`) publica la
+versión en `published/versions/<run_id>/`, actualiza el puntero
+`published/CURRENT` y conserva las versiones anteriores. Además de la decisión
+favorable, la publicación exige una fuente identificada como sintética o
+institucional.
 
 ## Resultados candidatos
 

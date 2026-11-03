@@ -48,9 +48,9 @@ Supuestos: los meses sin cobertura no se convierten en cero (quedan vacíos y ma
 - Su partición 70/30 deja la prueba en abril 2021 – junio 2026, que cruza la pandemia y el quiebre de 2023.
 - `dashboard/loaders.py` del Lab 10 importa `lstm_lab2` y lee `Lab2DS/outputs/metrics/*.npz`; este Lab 2 trae `lab2_main.py` y `lab2_outputs/*.csv`, así que ese tablero no corre contra este submódulo. En la entrega final el tablero lee la versión aprobada del pipeline y deja de depender de `Lab2DS`.
 
-## 5. Archivo de resultados que usará el tablero (se implementa en la entrega final)
+## 5. Archivo de resultados que usará el tablero
 
-`published/current/estimaciones.csv`, una fila por destino y mes:
+Copia anterior de este documento: la versión vigente está en `docs/ALCANCE.md`. Cada versión aprobada se publica en `published/versions/<run_id>/estimaciones.csv` y `published/CURRENT` contiene el `run_id` de la versión vigente (ver `docs/PUBLICACION.md`). Una fila por destino y mes:
 
 | Columna | Contenido |
 |---|---|

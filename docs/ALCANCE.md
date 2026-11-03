@@ -48,9 +48,9 @@ Supuestos: los meses sin cobertura no se convierten en cero (quedan vacíos y ma
 - Su partición 70/30 deja la prueba en abril 2021 – junio 2026, que cruza la pandemia y el quiebre de 2023.
 - `dashboard/loaders.py` del Lab 10 importa `lstm_lab2` y lee `Lab2DS/outputs/metrics/*.npz`; este Lab 2 trae `lab2_main.py` y `lab2_outputs/*.csv`, así que ese tablero no corre contra este submódulo. En la entrega final el tablero lee la versión aprobada del pipeline y deja de depender de `Lab2DS`.
 
-## 5. Archivo de resultados que usará el tablero (se implementa en la entrega final)
+## 5. Archivo de resultados que usará el tablero
 
-`published/current/estimaciones.csv`, una fila por destino y mes:
+Cada versión aprobada se publica en `published/versions/<run_id>/estimaciones.csv` y el archivo `published/CURRENT` contiene el `run_id` de la versión vigente (estructura y condiciones en [`PUBLICACION.md`](PUBLICACION.md)). El tablero, todavía no implementado, leerá únicamente la versión señalada por `CURRENT`. Una fila por destino y mes:
 
 | Columna | Contenido |
 |---|---|
@@ -63,7 +63,7 @@ Supuestos: los meses sin cobertura no se convierten en cero (quedan vacíos y ma
 | `version_procedimiento` | Versión del procedimiento (`pipeline.__version__`) |
 | `metodo` | Procedimiento de estimación (`seasonal_naive`) |
 
-Junto a él: `metadata.json` con la métrica de validación, los meses evaluados, el commit y la huella de la fuente. El contrato completo, sus validaciones y el esquema de `metadata.json` están en [`CONTRATO_RESULTADOS.md`](CONTRATO_RESULTADOS.md). Ya se generan `estimaciones_candidatas.csv` y `metadata.json` en la carpeta de cada ejecución; `published/current/` todavía no existe.
+Junto a él, en la misma carpeta de versión: `metadata.json` con la métrica de validación, los meses evaluados, el commit y la huella de la fuente, `decision_aceptacion.json`, `quality_report.json` y `manifest.json`. El contrato completo, sus validaciones y el esquema de `metadata.json` están en [`CONTRATO_RESULTADOS.md`](CONTRATO_RESULTADOS.md).
 
 ## 6. Diagrama
 
@@ -76,4 +76,5 @@ Ver `docs/diagrama_flujo.png` (fuente: `docs/flujo.dot`). Se valida en los contr
 Implementado: lectura con huella digital, población de referencia, seis controles de calidad con reporte, preparación sin relleno de ceros, compuerta que detiene antes de publicar, registro por ejecución, estimación estacional ingenua, validación temporal, comparación contra referencia, regla de aceptación y resultados candidatos versionados por ejecución. Verificado con el Excel real (210 meses, suma idéntica a un cálculo independiente: 46,711,912.89 visitantes) y con copias del Excel real con fallas inyectadas.
 Se añadió además el contrato formal de las estimaciones con su validador, la clasificación explícita de la fuente (sintética, institucional o no declarada) y `metadata.json` por ejecución (ver `CONTRATO_RESULTADOS.md`).
 El registro de cada ejecución en MLflow Tracking local (SQLite) está implementado; ver `MLFLOW.md`.
-Pendiente (entrega final): publicación versionada y restauración, lectura del tablero, monitoreo, Docker, README operativo completo e informe técnico final.
+La publicación versionada con puntero `CURRENT` y la restauración de versiones aprobadas están implementadas; ver `PUBLICACION.md`.
+Pendiente (entrega final): lectura del tablero, monitoreo, Docker, README operativo completo e informe técnico final.

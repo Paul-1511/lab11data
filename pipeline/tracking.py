@@ -288,7 +288,13 @@ def _result_tags(log: dict, results: list, exit_code: int, outcome: str) -> dict
     source = log.get("fuente") or {}
     decision = log.get("aceptacion")
     critical = [f"{r.name}: {r.message}" for r in results if r.status == "FAIL"]
+    publication = log.get("publicacion_detalle") or {}
     tags = {
+        "publicacion.estado": publication.get("estado", "no_ejecutada"),
+        "publicacion.version": publication.get("version"),
+        "publicacion.fecha": publication.get("fecha_publicacion"),
+        "publicacion.version_anterior": publication.get("version_anterior"),
+        "publicacion.errores": ", ".join(e["codigo"] for e in publication.get("errores", [])),
         "pipeline.resultado": outcome,
         "pipeline.exit_code": str(exit_code),
         "inicio_utc": log.get("inicio"),

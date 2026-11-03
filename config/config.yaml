@@ -8,7 +8,15 @@
 run:
   seed: 42                         # semilla para cualquier componente aleatorio
   output_dir: artifacts/runs       # una carpeta por ejecución (run_id)
-  published_dir: published         # versiones aprobadas que lee el tablero
+  published_dir: published         # versions/<run_id>/, CURRENT y publicaciones.jsonl
+
+publication:
+  # Publicación controlada (pipeline/publish.py) en run.published_dir. La versión es el run_id del
+  # pipeline y CURRENT señala la vigente. LAB11_PUBLISHED_DIR reemplaza la carpeta (por ejemplo, un
+  # volumen montado) y LAB11_PUBLISH_ENABLED=0 desactiva la publicación.
+  enabled: true
+  allow_synthetic: true            # permite versiones sintéticas, identificadas como tales en sus metadatos
+  lock_timeout_seconds: 30         # espera máxima por el bloqueo entre publicaciones simultáneas
 
 mlflow:
   # MLflow Tracking local: base SQLite y artefactos en carpetas relativas a la raíz del repositorio.

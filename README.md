@@ -71,7 +71,7 @@ python scripts/make_synthetic_data.py
 python -m pipeline.run --data data/synthetic/base_sintetica.csv
 ```
 
-Código de salida: `0` completado, `2` control crítico fallido (nada se publica), `1` error inesperado.
+Código de salida: `0` completado, `2` control crítico fallido (nada se publica), `1` error inesperado (incluye un fallo técnico al publicar).
 Cada ejecución crea `artifacts/runs/<run_id>/` con `quality_report.md|json`, `run_log.json`, `config_snapshot.yaml` y la serie preparada.
 
 ## Estimación y aceptación
@@ -80,8 +80,8 @@ Después de pasar los controles, el flujo calcula una estimación estacional
 ingenua, la evalúa sin usar datos futuros y la compara con la referencia de
 último valor observado. Genera `evaluacion_temporal.csv`,
 `estimaciones_candidatas.csv` y `decision_aceptacion.json` en la carpeta de la
-ejecución. La decisión aceptada autoriza la publicación; todavía no reemplaza
-ninguna versión en `published/`.
+ejecución. La decisión aceptada autoriza la publicación controlada (ver más abajo);
+un candidato rechazado nunca modifica `published/`.
 
 La regla y el horizonte están en `config/config.yaml`. La metodología completa
 está en [`docs/EVALUACION_Y_ACEPTACION.md`](docs/EVALUACION_Y_ACEPTACION.md).
@@ -105,7 +105,7 @@ cifras institucionales.
 
 Cada ejecución (aceptada, rechazada, detenida por calidad o con error) se registra en MLflow Tracking local:
 base SQLite en `mlflow/mlflow.db` y artefactos en `mlflow/artifacts/`, ambos fuera de Git. Configuración,
-estados y consulta en [`docs/MLFLOW.md`](docs/MLFLOW.md). La publicación controlada y la restauración todavía no están implementadas.
+estados y consulta en [`docs/MLFLOW.md`](docs/MLFLOW.md). El resultado de la publicación también queda en etiquetas `publicacion.*`.
 
 ```bash
 python -m pipeline.run --data data/synthetic/base_sintetica.csv --source-kind sintetica
@@ -113,6 +113,22 @@ python -m mlflow ui --backend-store-uri sqlite:///mlflow/mlflow.db
 ```
 
 `LAB11_MLFLOW_DIR` cambia la carpeta base y `LAB11_MLFLOW_ENABLED=0` desactiva el registro.
+
+## Publicación controlada y restauración
+
+Una ejecución aceptada se publica como versión inmutable en `published/versions/<run_id>/`
+(`estimaciones.csv`, `metadata.json`, `decision_aceptacion.json`, `quality_report.json` y
+`manifest.json`). El archivo `published/CURRENT` señala la versión vigente y se reemplaza de forma
+atómica; es la única que debe consultar el tablero (todavía no implementado). No se publican candidatos
+rechazados, con contrato inválido ni de fuentes `no_declarada`; las versiones sintéticas se publican
+identificadas como tales. Se conservan todas las versiones. Detalle en [`docs/PUBLICACION.md`](docs/PUBLICACION.md).
+
+```bash
+python -m pipeline.restore --list
+python -m pipeline.restore --version RUN_ID --reason "motivo"
+```
+
+`LAB11_PUBLISHED_DIR` cambia la carpeta de publicación y `LAB11_PUBLISH_ENABLED=0` desactiva la publicación.
 
 ## Pruebas
 

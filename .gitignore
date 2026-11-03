@@ -9,6 +9,9 @@ venv/
 data/raw/
 artifacts/
 
+# Lab 11: versiones publicadas, CURRENT y bitácora de publicación
+published/
+
 # Lab 11: MLflow local (base SQLite y artefactos)
 mlflow/
 mlruns/
