@@ -50,7 +50,7 @@ Supuestos: los meses sin cobertura no se convierten en cero (quedan vacíos y ma
 
 ## 5. Archivo de resultados que usará el tablero
 
-Cada versión aprobada se publica en `published/versions/<run_id>/estimaciones.csv` y el archivo `published/CURRENT` contiene el `run_id` de la versión vigente (estructura y condiciones en [`PUBLICACION.md`](PUBLICACION.md)). El tablero, todavía no implementado, leerá únicamente la versión señalada por `CURRENT`. Una fila por destino y mes:
+Cada versión aprobada se publica en `published/versions/<run_id>/estimaciones.csv` y el archivo `published/CURRENT` contiene el `run_id` de la versión vigente (estructura y condiciones en [`PUBLICACION.md`](PUBLICACION.md)). El tablero (`TABLERO.md`) lee únicamente la versión señalada por `CURRENT`, después de validarla. Una fila por destino y mes:
 
 | Columna | Contenido |
 |---|---|
@@ -77,4 +77,5 @@ Implementado: lectura con huella digital, población de referencia, seis control
 Se añadió además el contrato formal de las estimaciones con su validador, la clasificación explícita de la fuente (sintética, institucional o no declarada) y `metadata.json` por ejecución (ver `CONTRATO_RESULTADOS.md`).
 El registro de cada ejecución en MLflow Tracking local (SQLite) está implementado; ver `MLFLOW.md`.
 La publicación versionada con puntero `CURRENT` y la restauración de versiones aprobadas están implementadas; ver `PUBLICACION.md`.
-Pendiente (entrega final): lectura del tablero, monitoreo, Docker, README operativo completo e informe técnico final.
+El tablero Streamlit (Inicio, Estimaciones y Evaluación) está implementado y solo muestra la versión aprobada y vigente; ver `TABLERO.md`.
+Pendiente (entrega final): monitoreo, Docker, README operativo completo e informe técnico final.

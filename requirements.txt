@@ -1,4 +1,4 @@
-# Tablero del Laboratorio 10 — Observatorio de Turismo Sostenible
+# Tablero Streamlit del Observatorio de Turismo Sostenible (diseño adaptado del Laboratorio 10)
 # Versiones probadas (Streamlit 1.66 + Plotly 5.24 funcionan bien juntos;
 # con Plotly 7.x los eventos de selección de los gráficos no se comportan igual).
 streamlit==1.66.1
