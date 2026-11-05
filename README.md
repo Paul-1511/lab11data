@@ -4,7 +4,7 @@ Pipeline reproducible que estima el ingreso mensual de visitantes no residentes 
 lo registra en MLflow, lo publica en versiones inmutables y lo muestra en un tablero Streamlit que lee
 únicamente la versión aprobada y vigente.
 
-Documentación: [`docs/ALCANCE.md`](docs/ALCANCE.md) · [`docs/CONTROLES_CALIDAD.md`](docs/CONTROLES_CALIDAD.md) · [`docs/TABLERO.md`](docs/TABLERO.md) · [`docs/diagrama_flujo.png`](docs/diagrama_flujo.png)
+Documentación: [`docs/ALCANCE.md`](docs/ALCANCE.md) · [`docs/CONTROLES_CALIDAD.md`](docs/CONTROLES_CALIDAD.md) · [`docs/TABLERO.md`](docs/TABLERO.md) · [`docs/MONITOREO.md`](docs/MONITOREO.md) · [`docs/diagrama_flujo.png`](docs/diagrama_flujo.png)
 
 ## Tablero
 
@@ -99,6 +99,15 @@ python -m pipeline.restore --version RUN_ID --reason "motivo"
 `LAB11_PUBLISHED_DIR` cambia la carpeta de publicación y `LAB11_PUBLISH_ENABLED=0` desactiva la publicación.
 El tablero respeta `LAB11_PUBLISHED_DIR`.
 
+## Monitoreo y recuperación ante fallos
+
+Cada ejecución evalúa señales de actualización (fuente desactualizada frente a horizonte incompleto, meses requeridos ausentes),
+de calidad (faltantes, claves duplicadas y cobertura frente a la versión vigente) y de resultados (estimaciones negativas o no
+finitas, variaciones mensuales altas). Las alertas se informan en la consola, en `run_log.json`, `monitoreo.json` y MLflow
+(`monitoreo.*`); no cambian los códigos de salida ni la decisión de publicar. Ante un fallo crítico `CURRENT` no cambia y el
+tablero conserva la versión anterior. Umbrales, interpretación y procedimiento de recuperación en [`docs/MONITOREO.md`](docs/MONITOREO.md).
+`LAB11_MONITOR_ENABLED=0` desactiva el monitoreo. Docker todavía no está implementado.
+
 ## Pruebas
 
 ```bash
@@ -108,6 +117,7 @@ python -m pytest -q
 Cubren cada control (caso correcto y caso fallido), la población de referencia y la clave real y verifican que, ante cada falla inyectada, el pipeline se detiene sin publicar.
 Para provocar una falla a mano: `python scripts/make_synthetic_data.py --fault duplicate_key --out /tmp/malo.csv`; para inyectarla en una copia de los datos reales, añadir `--base RUTA/Base.xlsx`.
 `tests/test_dashboard.py` prueba el cargador y las páginas del tablero con versiones sintéticas en carpetas temporales.
+`tests/test_monitoring.py` prueba las alertas y el ciclo de fallo controlado, conservación de `CURRENT`, corrección y restauración.
 
 ## Estructura
 
@@ -121,7 +131,7 @@ dashboard/
 .streamlit/config.toml    Tema de la aplicación
 config/config.yaml        Rutas, períodos, parámetros y umbrales
 pipeline/                 config, io, dates, checks (6 controles), prepare, evaluation, contract,
-                          metadata, tracking, publish, restore, report, run
+                          metadata, tracking, monitoring, publish, restore, report, run
 scripts/make_synthetic_data.py   Datos sintéticos y fallas inyectables
 tests/                    Pruebas automáticas
 docs/                     Alcance, controles, contrato, MLflow, publicación, tablero y diagrama

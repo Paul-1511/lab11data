@@ -18,6 +18,22 @@ publication:
   allow_synthetic: true            # permite versiones sintéticas, identificadas como tales en sus metadatos
   lock_timeout_seconds: 30         # espera máxima por el bloqueo entre publicaciones simultáneas
 
+monitoring:
+  # Alertas de pipeline/monitoring.py. Informan; no cambian códigos de salida, aceptación ni publicación.
+  # LAB11_MONITOR_ENABLED=0 desactiva el monitoreo. Los valores son iniciales y conservadores:
+  # justificación y límites en docs/MONITOREO.md. Las comparaciones usan como línea base la versión de CURRENT.
+  enabled: true
+  freshness:
+    max_months_behind: 0           # el último mes observado debe ser periods.expected_end
+    max_publication_age_days: 45   # fuente mensual: un mes más dos semanas de tolerancia
+  quality:
+    missing_warn_fraction: 0.02    # avisa antes del umbral que detiene (quality.missing.max_allowed_frac = 0.05)
+    missing_max_increase: 0.005    # medio punto porcentual sobre la versión vigente
+    duplicates_max_increase: 0.0   # la clave es exacta y la calidad ya detiene con cualquier duplicado
+    coverage_max_months_lost: 0    # meses observados en la versión vigente que desaparecen
+  results:
+    max_monthly_change: 0.40       # variación mensual relativa que pide revisión; ver docs/MONITOREO.md
+
 mlflow:
   # MLflow Tracking local: base SQLite y artefactos en carpetas relativas a la raíz del repositorio.
   # LAB11_MLFLOW_DIR reemplaza `dir` (por ejemplo, un volumen montado en Docker) y

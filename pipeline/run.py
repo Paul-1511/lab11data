@@ -4,6 +4,7 @@
 
 Códigos de salida: 0 = completado (puede tener advertencias),
 2 = control crítico fallido (publicación bloqueada), 1 = error inesperado.
+Las alertas de monitoreo (pipeline/monitoring.py) se informan, pero no cambian estos códigos.
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ from .dates import build_dates
 from .evaluation import acceptance_decision, candidate_results, evaluate_temporally
 from .io import apply_filters, fingerprint, read_source
 from .metadata import SOURCE_KINDS, build_metadata, classify_source, write_metadata
+from .monitoring import monitor_run, monitoring_enabled, write_monitoring
 from .prepare import prepare, save_prepared
 from .publish import load_settings as load_publication_settings
 from .publish import publish_run
@@ -81,6 +83,12 @@ class RunLog:
             "advertencias": [],
             "errores": [],
             "publicacion": "no ejecutada",
+            "resultado_publicacion": "no_ejecutada",
+            "version_publicada": None,
+            "etapas_completadas": [],
+            "duracion_segundos": None,
+            "alertas": [],
+            "monitoreo": None,
         }
 
     @contextmanager
@@ -99,6 +107,21 @@ class RunLog:
     def skip(self, name: str, reason: str):
         self.data["etapas"].append({"etapa": name, "estado": reason})
 
+    def summarize(self) -> None:
+        """Campos derivados del registro: etapas completadas, versión publicada y duración."""
+        failed = {"error", "detenida", "fallida", "bloqueada", "error_no_bloqueante"}
+        self.data["etapas_completadas"] = [
+            e["etapa"] for e in self.data["etapas"] if e.get("fin") and e.get("estado") not in failed
+        ]
+        detail = self.data.get("publicacion_detalle") or {}
+        published = detail.get("estado") == "publicada"
+        self.data["version_publicada"] = detail.get("version") if published else None
+        if detail:
+            self.data["resultado_publicacion"] = detail.get("estado", "no_ejecutada")
+        if self.data.get("fin"):
+            start, end = datetime.fromisoformat(self.data["inicio"]), datetime.fromisoformat(self.data["fin"])
+            self.data["duracion_segundos"] = round((end - start).total_seconds(), 3)
+
 
 def execute(
     cfg: dict,
@@ -116,7 +139,7 @@ def execute(
         cfg, run_id, version=__version__,
         commit=log.data["commit_git"], tree_modified=log.data["arbol_git_modificado"],
     )
-    results, exit_code, completed = [], 0, False
+    results, exit_code, completed, candidates = [], 0, False, None
     try:
         # 1) Lectura ---------------------------------------------------------
         with log.stage("lectura"):
@@ -220,6 +243,23 @@ def execute(
             for name in ("estimacion_y_evaluacion", "estimaciones_candidatas", "regla_aceptacion", "metadatos"):
                 log.skip(name, "omitida por compuerta de calidad")
 
+        # 6b) Monitoreo: informa; no cambia el código de salida ni la decisión de publicar ---------
+        if not monitoring_enabled(cfg):
+            log.skip("monitoreo", "deshabilitado")
+        else:
+            with log.stage("monitoreo") as st:
+                report = monitor_run(cfg, results, candidates, source_type=log.data["fuente"].get("tipo"))
+                report["fecha"] = _now()
+                log.data["monitoreo"] = report
+                log.data["alertas"] = report["alertas"]
+                if report["estado"] == "error":
+                    st["estado"] = "error_no_bloqueante"
+                    log.data["advertencias"].append(f"monitoreo: no se pudo evaluar ({report['mensaje']})")
+                else:
+                    write_monitoring(report, run_dir / "monitoreo.json")
+                    log.data["salidas"] = log.data.get("salidas", {})
+                    log.data["salidas"]["monitoreo"] = str(run_dir / "monitoreo.json")
+
         # 7) Publicación controlada ----------------------------------------------
         if exit_code != 0:
             log.skip("publicacion", "omitida por compuerta de calidad")
@@ -228,6 +268,7 @@ def execute(
         elif not load_publication_settings(cfg).enabled:
             log.skip("publicacion", "deshabilitada")
             log.data["publicacion"] = "autorizada por la regla; publicación deshabilitada"
+            log.data["resultado_publicacion"] = "deshabilitada"
         else:
             with log.stage("publicacion") as st:
                 outcome = publish_run(cfg, run_dir)
@@ -248,6 +289,7 @@ def execute(
         log.data["fin"] = _now()
         log.data["codigo_salida"] = exit_code
         tracking_started = _now()
+        log.summarize()
         log.data["mlflow"] = tracker.finalize(
             log.data, results, run_dir, exit_code=exit_code, interrupted=not completed and exit_code == 0
         )
@@ -259,6 +301,7 @@ def execute(
             log.data["advertencias"].append(
                 "mlflow: la ejecución no quedó completamente trazable; ver mlflow.errores en run_log.json"
             )
+        log.summarize()
         (run_dir / "run_log.json").write_text(
             json.dumps(log.data, ensure_ascii=False, indent=2, default=str), encoding="utf-8"
         )
@@ -283,6 +326,12 @@ def main(argv: list[str] | None = None) -> int:
     for e in out["log"]["errores"]:
         print(f"  ERROR: {e}", file=sys.stderr)
     print(f"Publicación: {out['log']['publicacion']}")
+    monitoring = out["log"].get("monitoreo")
+    if monitoring and monitoring["estado"] != "error":
+        summary = monitoring["resumen"]
+        print(f"Monitoreo: {summary['criticas']} alerta(s) crítica(s), {summary['advertencias']} advertencia(s)")
+        for alert in monitoring["alertas"]:
+            print(f"  [{alert['severidad']}] {alert['codigo']}: {alert['mensaje']}")
     tracking = out["log"]["mlflow"]
     print(f"MLflow: trazabilidad {tracking['trazabilidad']}" + (f" (run {tracking['run_id']})" if tracking["run_id"] else ""))
     for e in tracking["errores"]:

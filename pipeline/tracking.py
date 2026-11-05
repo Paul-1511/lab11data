@@ -31,6 +31,7 @@ DEFAULT_EXPERIMENT = "observatorio_turismo_guatemala"
 ARTIFACT_NAMES = (
     "quality_report.json", "quality_report.md", "evaluacion_temporal.csv",
     "estimaciones_candidatas.csv", "decision_aceptacion.json", "metadata.json", "config_snapshot.yaml",
+    "monitoreo.json",
 )
 
 TRACE_COMPLETE = "completa"
@@ -289,7 +290,11 @@ def _result_tags(log: dict, results: list, exit_code: int, outcome: str) -> dict
     decision = log.get("aceptacion")
     critical = [f"{r.name}: {r.message}" for r in results if r.status == "FAIL"]
     publication = log.get("publicacion_detalle") or {}
+    monitoring = log.get("monitoreo") or {}
     tags = {
+        "monitoreo.estado": monitoring.get("estado"),
+        "monitoreo.alertas": ", ".join(dict.fromkeys(a["codigo"] for a in monitoring.get("alertas", []))),
+        "monitoreo.linea_base": (monitoring.get("linea_base") or {}).get("estado"),
         "publicacion.estado": publication.get("estado", "no_ejecutada"),
         "publicacion.version": publication.get("version"),
         "publicacion.fecha": publication.get("fecha_publicacion"),
@@ -331,6 +336,10 @@ def _result_metrics(log: dict, results: list) -> dict[str, float]:
     estimate, reference = out.get("mae_estimacion"), out.get("mae_referencia")
     if estimate is not None and reference:
         out["razon_mae"] = estimate / reference
+    summary = (log.get("monitoreo") or {}).get("resumen")
+    if summary and log["monitoreo"].get("estado") != "error":
+        out["monitoreo.alertas_criticas"] = float(summary["criticas"])
+        out["monitoreo.alertas_advertencia"] = float(summary["advertencias"])
     for status in ("PASS", "WARN", "FAIL", "NO EVALUADO"):
         if results:
             out["controles_" + status.lower().replace(" ", "_")] = float(sum(r.status == status for r in results))

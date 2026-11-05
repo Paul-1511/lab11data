@@ -78,4 +78,5 @@ Se añadió además el contrato formal de las estimaciones con su validador, la 
 El registro de cada ejecución en MLflow Tracking local (SQLite) está implementado; ver `MLFLOW.md`.
 La publicación versionada con puntero `CURRENT` y la restauración de versiones aprobadas están implementadas; ver `PUBLICACION.md`.
 El tablero Streamlit (Inicio, Estimaciones y Evaluación) está implementado y solo muestra la versión aprobada y vigente; ver `TABLERO.md`.
-Pendiente (entrega final): monitoreo, Docker, README operativo completo e informe técnico final.
+El monitoreo de actualización, calidad y resultados, con alertas, registro ampliado por ejecución y procedimiento de recuperación, está implementado; ver `MONITOREO.md`.
+Pendiente (entrega final): Docker, README operativo completo e informe técnico final.

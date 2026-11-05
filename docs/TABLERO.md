@@ -1,6 +1,6 @@
 # Tablero Streamlit
 
-Implementado en `app.py` y `dashboard/`. Muestra únicamente la versión aprobada y vigente que publica el pipeline (`PUBLICACION.md`). El monitoreo y Docker todavía no están implementados.
+Implementado en `app.py` y `dashboard/`. Muestra únicamente la versión aprobada y vigente que publica el pipeline (`PUBLICACION.md`). Docker todavía no está implementado.
 
 ## Iniciar
 
@@ -68,7 +68,7 @@ Se adaptaron del Laboratorio 10 la marca, neutros, tipografía, plantilla de gr�
 - La evaluación es una ventana única con origen móvil; las métricas son las publicadas por el pipeline.
 - La estimación es estacional ingenua: no modela tendencia ni incertidumbre, por lo que no hay intervalos.
 - No hay autenticación.
-- Los avisos de calidad de datos del monitoreo futuro no existen todavía.
+- No muestra las alertas de monitoreo (`MONITOREO.md`): se consultan en los registros de la ejecución y en MLflow.
 
 ## Pruebas
 

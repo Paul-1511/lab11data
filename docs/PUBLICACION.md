@@ -1,6 +1,6 @@
 # Publicación controlada, versionado y restauración
 
-Implementado en `pipeline/publish.py` (publicación, verificación, listado y restauración) y `pipeline/restore.py` (comando). El tablero (`TABLERO.md`) lee solamente la versión que señala `CURRENT`. Este documento no cubre el monitoreo ni Docker: todavía no están implementados.
+Implementado en `pipeline/publish.py` (publicación, verificación, listado y restauración) y `pipeline/restore.py` (comando). El tablero (`TABLERO.md`) lee solamente la versión que señala `CURRENT`. El monitoreo (`MONITOREO.md`) usa la versión vigente como línea base sin modificarla. Este documento no cubre Docker: todavía no está implementado.
 
 ## Estructura
 

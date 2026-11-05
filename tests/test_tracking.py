@@ -203,7 +203,11 @@ def test_only_existing_permitted_artifacts_are_recorded(accepted, blocked, error
     client, run = find_run(accepted["cfg"], accepted["out"]["run_id"])
     assert artifact_names(client, run) == set(ARTIFACT_NAMES)
     client, run = find_run(blocked["cfg"], blocked["out"]["run_id"])
-    assert artifact_names(client, run) == {"quality_report.json", "quality_report.md", "config_snapshot.yaml"}
+    # El monitoreo se ejecuta también cuando la compuerta de calidad detiene el pipeline.
+    assert artifact_names(client, run) == {
+        "quality_report.json", "quality_report.md", "config_snapshot.yaml", "monitoreo.json",
+    }
+    assert blocked["out"]["log"]["monitoreo"]["estado"] != "error"
     client, run = find_run(errored["cfg"], errored["out"]["run_id"])
     assert artifact_names(client, run) == {"config_snapshot.yaml"}
 
