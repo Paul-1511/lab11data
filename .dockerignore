@@ -1,0 +1,36 @@
+# Control de versiones y entornos locales
+.git
+.gitignore
+.github
+.claude
+.venv
+venv
+.pytest_cache
+**/__pycache__
+**/*.pyc
+
+# Datos: ni la fuente institucional ni ningún microdato forman parte de la imagen
+data
+**/*.xlsx
+**/*.xls
+**/*.csv
+
+# Resultados locales: viven en volúmenes, no en la imagen
+artifacts
+published
+mlflow
+mlruns
+**/*.db
+**/*.sqlite
+
+# Credenciales y configuración local
+.env
+.env.*
+.streamlit/secrets.toml
+
+# Material que la imagen no necesita
+tests
+docs
+*.md
+*.pdf
+*.png

@@ -4,7 +4,7 @@ Pipeline reproducible que estima el ingreso mensual de visitantes no residentes 
 lo registra en MLflow, lo publica en versiones inmutables y lo muestra en un tablero Streamlit que lee
 únicamente la versión aprobada y vigente.
 
-Documentación: [`docs/ALCANCE.md`](docs/ALCANCE.md) · [`docs/CONTROLES_CALIDAD.md`](docs/CONTROLES_CALIDAD.md) · [`docs/TABLERO.md`](docs/TABLERO.md) · [`docs/MONITOREO.md`](docs/MONITOREO.md) · [`docs/diagrama_flujo.png`](docs/diagrama_flujo.png)
+Documentación: [`docs/ALCANCE.md`](docs/ALCANCE.md) · [`docs/CONTROLES_CALIDAD.md`](docs/CONTROLES_CALIDAD.md) · [`docs/TABLERO.md`](docs/TABLERO.md) · [`docs/MONITOREO.md`](docs/MONITOREO.md) · [`docs/DOCKER.md`](docs/DOCKER.md) · [`docs/diagrama_flujo.png`](docs/diagrama_flujo.png)
 
 ## Tablero
 
@@ -106,7 +106,124 @@ de calidad (faltantes, claves duplicadas y cobertura frente a la versión vigent
 finitas, variaciones mensuales altas). Las alertas se informan en la consola, en `run_log.json`, `monitoreo.json` y MLflow
 (`monitoreo.*`); no cambian los códigos de salida ni la decisión de publicar. Ante un fallo crítico `CURRENT` no cambia y el
 tablero conserva la versión anterior. Umbrales, interpretación y procedimiento de recuperación en [`docs/MONITOREO.md`](docs/MONITOREO.md).
-`LAB11_MONITOR_ENABLED=0` desactiva el monitoreo. Docker todavía no está implementado.
+`LAB11_MONITOR_ENABLED=0` desactiva el monitoreo.
+
+## Docker Compose (configuración creada; pendiente de verificación)
+
+Tres servicios con una sola imagen: `mlflow` (puerto 5000), `streamlit` (puerto 8501) y `pipeline` (solo bajo demanda).
+Las versiones publicadas, los registros de ejecuciones y MLflow viven en volúmenes de Docker; los datos se montan desde
+fuera, en solo lectura, y no entran en la imagen. Arquitectura, volúmenes y variables en [`docs/DOCKER.md`](docs/DOCKER.md).
+**Estos comandos aún no se han ejecutado: Docker no se considera verificado hasta comprobar el resultado.**
+
+Convención: los bloques están en **PowerShell, en el equipo**. En `docker compose run --rm pipeline <comando>`, lo que va
+después de `pipeline` se ejecuta **dentro del contenedor** (Linux, carpeta `/app`, rutas con `/`).
+
+**1. Requisitos previos.** Docker Desktop para Windows con el motor WSL 2 iniciado.
+
+```powershell
+docker --version
+docker compose version
+```
+
+**2. Configuración inicial** (opcional; sin `.env` se usan `./data` y los puertos 8501 y 5000).
+
+```powershell
+cd C:\Users\mjyee\Downloads\DataScience\lab11data
+Copy-Item .env.example .env
+```
+
+**3. Construcción de la imagen.**
+
+```powershell
+docker compose build
+```
+
+**4. Inicio de servicios** (MLflow y tablero; no se ejecuta el pipeline).
+
+```powershell
+docker compose up -d
+docker compose ps
+```
+
+**5. Ejecución del pipeline con datos sintéticos** (el comando después de `pipeline` corre en el contenedor).
+
+```powershell
+docker compose run --rm pipeline python -m pipeline.run --data /data/synthetic/base_sintetica.csv --source-kind sintetica
+```
+
+Con datos institucionales: en `.env`, `LAB11_DATA_DIR=D:/ruta/a/la/carpeta/del/excel` (barras normales), y
+
+```powershell
+docker compose up -d --force-recreate
+docker compose run --rm pipeline python -m pipeline.run --data /data/Base_Migracion_2009-2026jun.xlsx --source-kind institucional
+```
+
+**6. Tablero Streamlit:** <http://localhost:8501>. **7. MLflow:** <http://localhost:5000> (experimento `observatorio_turismo_guatemala`).
+
+**8. Registros.**
+
+```powershell
+docker compose logs --tail 100 streamlit
+docker compose logs --tail 100 mlflow
+docker compose run --rm pipeline ls artifacts/runs
+docker compose run --rm pipeline cat artifacts/runs/RUN_ID/monitoreo.json
+docker compose run --rm pipeline cat published/CURRENT
+docker compose run --rm pipeline cat published/publicaciones.jsonl
+```
+
+`RUN_ID` es uno de los identificadores que muestra `ls artifacts/runs`.
+
+**9. Restauración de versiones.**
+
+```powershell
+docker compose run --rm pipeline python -m pipeline.restore --list
+docker compose run --rm pipeline python -m pipeline.restore --version RUN_ID --reason "motivo"
+```
+
+**10. Detención** (conserva los volúmenes).
+
+```powershell
+docker compose stop
+docker compose down
+```
+
+**11. Recreación de contenedores** (conserva los volúmenes).
+
+```powershell
+docker compose down
+docker compose up -d
+docker compose up -d --force-recreate
+```
+
+**12. Verificación de persistencia.** Anote `CURRENT` y las versiones, recree los contenedores y compare.
+
+```powershell
+docker compose run --rm pipeline cat published/CURRENT
+docker compose run --rm pipeline python -m pipeline.restore --list
+docker compose down
+docker compose up -d
+docker compose run --rm pipeline cat published/CURRENT
+docker compose run --rm pipeline python -m pipeline.restore --list
+docker volume ls --filter name=_data
+```
+
+Deben coincidir; el tablero y MLflow deben seguir mostrando la versión y las ejecuciones anteriores.
+**No use `docker compose down -v`** salvo que quiera borrar versiones, registros y MLflow.
+
+**13. Ejecución desde una copia limpia.** Requiere que los archivos de Docker estén confirmados en Git. Detenga antes el
+entorno actual para liberar los puertos; la copia obtiene volúmenes nuevos y vacíos (se nombran por su carpeta).
+
+```powershell
+cd C:\Users\mjyee\Downloads\DataScience\lab11data
+docker compose down
+git clone C:\Users\mjyee\Downloads\DataScience\lab11data C:\Users\mjyee\Downloads\DataScience\lab11-limpio
+cd C:\Users\mjyee\Downloads\DataScience\lab11-limpio
+docker compose build
+docker compose up -d
+docker compose run --rm pipeline python -m pipeline.run --data /data/synthetic/base_sintetica.csv --source-kind sintetica
+```
+
+Abra <http://localhost:8501> y <http://localhost:5000>. Al terminar: `docker compose down -v` dentro de la copia elimina solo sus volúmenes.
 
 ## Pruebas
 
@@ -117,6 +234,7 @@ python -m pytest -q
 Cubren cada control (caso correcto y caso fallido), la población de referencia y la clave real y verifican que, ante cada falla inyectada, el pipeline se detiene sin publicar.
 Para provocar una falla a mano: `python scripts/make_synthetic_data.py --fault duplicate_key --out /tmp/malo.csv`; para inyectarla en una copia de los datos reales, añadir `--base RUTA/Base.xlsx`.
 `tests/test_dashboard.py` prueba el cargador y las páginas del tablero con versiones sintéticas en carpetas temporales.
+`tests/test_docker.py` revisa solo los archivos de configuración de Docker; no ejecuta Docker.
 `tests/test_monitoring.py` prueba las alertas y el ciclo de fallo controlado, conservación de `CURRENT`, corrección y restauración.
 
 ## Estructura
@@ -129,6 +247,7 @@ dashboard/
   theme.py, ui.py         Tema adaptado del Lab 10 y componentes de interfaz
   views/                  inicio.py, estimaciones.py, evaluacion.py
 .streamlit/config.toml    Tema de la aplicación
+Dockerfile, docker-compose.yml, .dockerignore, .env.example   Entorno Docker (sin verificar)
 config/config.yaml        Rutas, períodos, parámetros y umbrales
 pipeline/                 config, io, dates, checks (6 controles), prepare, evaluation, contract,
                           metadata, tracking, monitoring, publish, restore, report, run

@@ -1,6 +1,6 @@
 # Monitoreo, alertas y recuperación ante fallos
 
-Implementado en `pipeline/monitoring.py` y llamado por `python -m pipeline.run` después de la regla de aceptación y antes de la publicación. Docker todavía no está implementado.
+Implementado en `pipeline/monitoring.py` y llamado por `python -m pipeline.run` después de la regla de aceptación y antes de la publicación. La ejecución en Docker (`DOCKER.md`) está escrita pero sin verificar.
 
 ## Qué hace y qué no hace
 

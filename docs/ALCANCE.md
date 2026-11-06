@@ -79,4 +79,5 @@ El registro de cada ejecución en MLflow Tracking local (SQLite) está implement
 La publicación versionada con puntero `CURRENT` y la restauración de versiones aprobadas están implementadas; ver `PUBLICACION.md`.
 El tablero Streamlit (Inicio, Estimaciones y Evaluación) está implementado y solo muestra la versión aprobada y vigente; ver `TABLERO.md`.
 El monitoreo de actualización, calidad y resultados, con alertas, registro ampliado por ejecución y procedimiento de recuperación, está implementado; ver `MONITOREO.md`.
-Pendiente (entrega final): Docker, README operativo completo e informe técnico final.
+La configuración de Docker Compose (pipeline bajo demanda, tablero y MLflow, con volúmenes persistentes) está escrita pero **sin verificar**; ver `DOCKER.md`.
+Pendiente (entrega final): verificación de Docker, README operativo completo e informe técnico final.

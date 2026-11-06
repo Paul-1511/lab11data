@@ -1,0 +1,110 @@
+# Laboratorio 11 — Observatorio de Turismo (MLOps).
+#
+#   docker compose up -d                 inicia MLflow y el tablero (no ejecuta el pipeline)
+#   docker compose run --rm pipeline ... ejecuta el pipeline de forma explícita
+#
+# Los resultados viven en volúmenes con nombre (Linux dentro de Docker Desktop), no en carpetas de Windows:
+# SQLite y el bloqueo de publicación no son fiables sobre carpetas de Windows montadas.
+# `docker compose down` conserva los volúmenes; `docker compose down -v` los elimina.
+# Variables opcionales (ver .env.example): LAB11_DATA_DIR, LAB11_STREAMLIT_PORT, LAB11_MLFLOW_PORT.
+
+x-lab11: &lab11
+  build:
+    context: .
+    dockerfile: Dockerfile
+  image: lab11-observatorio:local
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  mlflow:
+    <<: *lab11
+    # Visor de MLflow sobre la misma base SQLite y los mismos artefactos que escribe el pipeline.
+    # La ruta /app/mlflow es idéntica en ambos contenedores porque el experimento guarda la ubicación
+    # de sus artefactos como una URI de archivo.
+    command:
+      - python
+      - -m
+      - mlflow
+      - server
+      - --host
+      - 0.0.0.0
+      - --port
+      - "5000"
+      - --backend-store-uri
+      - sqlite:////app/mlflow/mlflow.db
+      - --default-artifact-root
+      - /app/mlflow/artifacts
+    ports:
+      - "127.0.0.1:${LAB11_MLFLOW_PORT:-5000}:5000"
+    volumes:
+      - type: volume
+        source: mlflow_data
+        target: /app/mlflow
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  streamlit:
+    <<: *lab11
+    # Solo lectura: muestra la versión que señala published/CURRENT. No monta datos, no ejecuta el pipeline.
+    command:
+      - streamlit
+      - run
+      - app.py
+      - --server.address=0.0.0.0
+      - --server.port=8501
+      - --browser.gatherUsageStats=false
+    environment:
+      LAB11_PUBLISHED_DIR: /app/published
+    ports:
+      - "127.0.0.1:${LAB11_STREAMLIT_PORT:-8501}:8501"
+    volumes:
+      - type: volume
+        source: published_data
+        target: /app/published
+        read_only: true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  pipeline:
+    <<: *lab11
+    # Perfil propio: `docker compose up` no lo inicia. Se ejecuta con `docker compose run --rm pipeline <comando>`.
+    # El comando por defecto solo muestra la ayuda; no estima nada.
+    profiles: ["pipeline"]
+    command: ["python", "-m", "pipeline.run", "--help"]
+    environment:
+      LAB11_MLFLOW_DIR: /app/mlflow
+      LAB11_PUBLISHED_DIR: /app/published
+      LAB11_MLFLOW_ENABLED: "1"
+      LAB11_PUBLISH_ENABLED: "1"
+      LAB11_MONITOR_ENABLED: "1"
+    volumes:
+      # Fuente de datos (sintéticos por defecto) desde fuera de la imagen y en solo lectura.
+      - type: bind
+        source: ${LAB11_DATA_DIR:-./data}
+        target: /data
+        read_only: true
+      - type: volume
+        source: runs_data
+        target: /app/artifacts
+      - type: volume
+        source: published_data
+        target: /app/published
+      - type: volume
+        source: mlflow_data
+        target: /app/mlflow
+
+volumes:
+  mlflow_data:
+  published_data:
+  runs_data:

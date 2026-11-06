@@ -1,6 +1,6 @@
 # Tablero Streamlit
 
-Implementado en `app.py` y `dashboard/`. Muestra únicamente la versión aprobada y vigente que publica el pipeline (`PUBLICACION.md`). Docker todavía no está implementado.
+Implementado en `app.py` y `dashboard/`. Muestra únicamente la versión aprobada y vigente que publica el pipeline (`PUBLICACION.md`). Su ejecución en Docker (`DOCKER.md`) está escrita pero sin verificar.
 
 ## Iniciar
 
