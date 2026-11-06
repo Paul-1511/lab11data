@@ -67,7 +67,7 @@ Junto a él, en la misma carpeta de versión: `metadata.json` con la métrica de
 
 ## 6. Diagrama
 
-Ver `docs/diagrama_flujo.png` (fuente: `docs/flujo.dot`). Se valida en los controles a–f, se evalúa en el paso 5 y se autoriza la publicación en la regla de aceptación (paso 6).
+Ver `docs/diagrama_flujo.png` (fuente: `docs/flujo.dot`). Muestra la lectura, los seis controles de calidad, la preparación, la estimación y evaluación temporal, la regla de aceptación, el monitoreo, la publicación controlada (versiones, `CURRENT` y restauración), MLflow, el tablero y los volúmenes de Docker. El `.svg` y el `.png` se generan desde el `.dot` (comando en el README).
 
 ![Flujo](diagrama_flujo.png)
 
@@ -79,5 +79,5 @@ El registro de cada ejecución en MLflow Tracking local (SQLite) está implement
 La publicación versionada con puntero `CURRENT` y la restauración de versiones aprobadas están implementadas; ver `PUBLICACION.md`.
 El tablero Streamlit (Inicio, Estimaciones y Evaluación) está implementado y solo muestra la versión aprobada y vigente; ver `TABLERO.md`.
 El monitoreo de actualización, calidad y resultados, con alertas, registro ampliado por ejecución y procedimiento de recuperación, está implementado; ver `MONITOREO.md`.
-La configuración de Docker Compose (pipeline bajo demanda, tablero y MLflow, con volúmenes persistentes) está escrita pero **sin verificar**; ver `DOCKER.md`.
-Pendiente (entrega final): verificación de Docker, README operativo completo e informe técnico final.
+La configuración de Docker Compose (pipeline bajo demanda, tablero y MLflow, con volúmenes persistentes) está implementada; el equipo comprobó la construcción, los servicios y la persistencia, y el registro del commit de Git en la imagen sigue sin verificar (ver `DOCKER.md`).
+Pendiente (entrega final): verificación del commit en Docker y de la copia limpia, y el informe técnico final.

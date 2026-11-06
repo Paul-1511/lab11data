@@ -57,7 +57,7 @@ Una ejecución rechazada por desempeño o detenida por calidad no es una excepci
 ## Qué se registra
 
 - **Parámetros:** destino, variable objetivo, unidad, granularidad, períodos esperado, de ajuste, de evaluación y horizonte, método, período estacional, baseline, semilla y umbrales de aceptación.
-- **Etiquetas:** `pipeline.run_id`, versión del procedimiento, commit de Git (`git.commit`), `git.tree_modified`, huella de la configuración, `inicio_utc`, `fin_utc`, resultado y código de salida, tipo de fuente, criterio de clasificación, nombre del archivo, SHA-256, tamaño y filas de la fuente, decisión y motivos de aceptación, estado global y de cada control (`calidad.<id>`), advertencias, errores críticos y `trazabilidad`.
+- **Etiquetas:** `pipeline.run_id`, versión del procedimiento, commit de Git (`git.commit`, ausente si no está disponible), `git.commit_origen` (`git`, `variable_de_entorno` o `no_disponible`), `git.tree_modified`, huella de la configuración, `inicio_utc`, `fin_utc`, resultado y código de salida, tipo de fuente, criterio de clasificación, nombre del archivo, SHA-256, tamaño y filas de la fuente, decisión y motivos de aceptación, estado global y de cada control (`calidad.<id>`), advertencias, errores críticos y `trazabilidad`.
 - **Métricas:** `mae_estimacion`, `rmse_estimacion`, `mae_referencia`, `rmse_referencia`, `razon_mae`, `meses_evaluados`, `meses_solicitados` y el número de controles por estado. Solo aparecen cuando el pipeline las calculó.
 - **Artefactos, si existen:** `quality_report.json`, `quality_report.md`, `evaluacion_temporal.csv`, `estimaciones_candidatas.csv`, `decision_aceptacion.json`, `metadata.json` y `config_snapshot.yaml`.
 

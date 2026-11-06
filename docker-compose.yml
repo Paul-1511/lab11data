@@ -12,6 +12,9 @@ x-lab11: &lab11
   build:
     context: .
     dockerfile: Dockerfile
+    args:
+      GIT_COMMIT: ${GIT_COMMIT:-}
+      GIT_TREE_MODIFIED: ${GIT_TREE_MODIFIED:-}
   image: lab11-observatorio:local
   security_opt:
     - no-new-privileges:true

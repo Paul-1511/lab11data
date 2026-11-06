@@ -63,7 +63,7 @@ Se escribe en `artifacts/runs/<run_id>/metadata.json` cuando la compuerta de cal
 |---|---|
 | `esquema_version` | `1.0` |
 | `run_id`, `fecha_generacion`, `version_procedimiento` | identificación; `fecha_generacion` sale de las estimaciones |
-| `commit_git`, `arbol_git_modificado` | `HEAD` o `null` si no hay git; si hay cambios sin confirmar, el commit no identifica el código ejecutado |
+| `commit_git`, `arbol_git_modificado`, `commit_git_origen` | `commit_git` es `HEAD` o `null` si no está disponible. `commit_git_origen` indica de dónde sale: `git` (repositorio local), `variable_de_entorno` (commit declarado al construir la imagen de Docker, ver `DOCKER.md`) o `no_disponible`. Si `arbol_git_modificado` es `true`, el commit no identifica el código ejecutado; `null` significa que se desconoce |
 | `configuracion` | huella SHA-256 de la configuración y semilla |
 | `fuente` | `tipo`, `criterio`, `conflicto_con_declaracion`, `nombre_archivo`, `sha256`, `bytes`, `filas`, `filas_poblacion`, `filtros` |
 | `objetivo` | destino, variable, unidad, granularidad |

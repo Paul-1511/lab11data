@@ -11,6 +11,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import re
 import shutil
 import subprocess
 import sys
@@ -66,15 +68,50 @@ def _git_tree_modified() -> bool | None:
         return None
 
 
+# Dentro de Docker no hay Git ni carpeta .git: el commit y el estado del árbol los declara quien construye
+# la imagen (argumentos de construcción -> estas variables). Es una declaración, no una verificación.
+ENV_COMMIT = "LAB11_GIT_COMMIT"
+ENV_TREE_MODIFIED = "LAB11_GIT_TREE_MODIFIED"
+ORIGIN_GIT = "git"
+ORIGIN_ENV = "variable_de_entorno"
+ORIGIN_NONE = "no_disponible"
+_COMMIT_ID = re.compile(r"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
+
+
+def _code_version() -> dict:
+    """Commit del código ejecutado, si el árbol tenía cambios sin confirmar y de dónde sale el dato.
+
+    Orden: repositorio Git local (verificable); si no hay, la variable `LAB11_GIT_COMMIT` si contiene un
+    identificador completo; si no, `no_disponible`. Nunca se inventa un identificador.
+    """
+    commit = _git_commit()
+    if commit != "sin-git":
+        return {"commit_git": commit, "arbol_git_modificado": _git_tree_modified(),
+                "commit_git_origen": ORIGIN_GIT, "advertencia": None}
+    declared = (os.environ.get(ENV_COMMIT) or "").strip().lower()
+    if not declared:
+        return {"commit_git": "sin-git", "arbol_git_modificado": None,
+                "commit_git_origen": ORIGIN_NONE, "advertencia": None}
+    if not _COMMIT_ID.match(declared):
+        return {"commit_git": "sin-git", "arbol_git_modificado": None, "commit_git_origen": ORIGIN_NONE,
+                "advertencia": f"git: {ENV_COMMIT} no contiene un identificador de commit completo; se ignora"}
+    raw = (os.environ.get(ENV_TREE_MODIFIED) or "").strip().lower()
+    modified = True if raw == "true" else False if raw == "false" else None
+    return {"commit_git": declared, "arbol_git_modificado": modified,
+            "commit_git_origen": ORIGIN_ENV, "advertencia": None}
+
+
 class RunLog:
     """Registro por ejecución: horas, etapas, advertencias, errores y publicación."""
 
     def __init__(self, run_id: str, cfg: dict):
+        code = _code_version()
         self.data = {
             "run_id": run_id,
             "version_procedimiento": __version__,
-            "commit_git": _git_commit(),
-            "arbol_git_modificado": _git_tree_modified(),
+            "commit_git": code["commit_git"],
+            "arbol_git_modificado": code["arbol_git_modificado"],
+            "commit_git_origen": code["commit_git_origen"],
             "config": cfg["_meta"],
             "semilla": cfg["run"]["seed"],
             "inicio": _now(),
@@ -90,6 +127,8 @@ class RunLog:
             "alertas": [],
             "monitoreo": None,
         }
+        if code["advertencia"]:
+            self.data["advertencias"].append(code["advertencia"])
 
     @contextmanager
     def stage(self, name: str):
@@ -138,6 +177,7 @@ def execute(
     tracker = Tracker.start(
         cfg, run_id, version=__version__,
         commit=log.data["commit_git"], tree_modified=log.data["arbol_git_modificado"],
+        commit_origin=log.data["commit_git_origen"],
     )
     results, exit_code, completed, candidates = [], 0, False, None
     try:

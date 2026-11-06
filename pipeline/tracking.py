@@ -147,13 +147,14 @@ class Tracker:
 
     @classmethod
     def start(
-        cls, cfg: dict, pipeline_run_id: str, *, version: str, commit: str | None, tree_modified: bool | None
+        cls, cfg: dict, pipeline_run_id: str, *, version: str, commit: str | None, tree_modified: bool | None,
+        commit_origin: str | None = None,
     ) -> "Tracker":
         tracker = cls(load_settings(cfg))
         if not tracker.settings.enabled:
             return tracker
         try:
-            tracker._open(cfg, pipeline_run_id, version, commit, tree_modified)
+            tracker._open(cfg, pipeline_run_id, version, commit, tree_modified, commit_origin)
         except Exception as exc:
             tracker._record("inicio", exc)
         return tracker
@@ -161,7 +162,7 @@ class Tracker:
     def _record(self, step: str, exc: Exception) -> None:
         self.errors.append(f"{step}: {redact_paths(exc)}")
 
-    def _open(self, cfg: dict, pipeline_run_id: str, version: str, commit, tree_modified) -> None:
+    def _open(self, cfg: dict, pipeline_run_id: str, version: str, commit, tree_modified, commit_origin=None) -> None:
         from mlflow.entities import Param
         from mlflow.tracking import MlflowClient
 
@@ -178,6 +179,7 @@ class Tracker:
             "pipeline.run_id": pipeline_run_id,
             "pipeline.version": version,
             "git.commit": commit if commit not in (None, "sin-git") else None,
+            "git.commit_origen": commit_origin,
             "git.tree_modified": None if tree_modified is None else str(tree_modified).lower(),
             "config.sha256": cfg["_meta"]["sha256"],
         }

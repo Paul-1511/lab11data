@@ -1,35 +1,71 @@
 digraph G {
-  rankdir=LR; fontname="Helvetica"; nodesep=0.35; ranksep=0.45;
+  rankdir=LR; fontname="Helvetica"; nodesep=0.35; ranksep=0.5; compound=true;
   node [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled", fillcolor="#F6F8F9", color="#5B6B76"];
   edge [fontname="Helvetica", fontsize=9, color="#5B6B76"];
 
-  fuente [label="Fuente mensual\n(Excel montado,\nfuera de Git/Docker)", shape=cylinder, fillcolor="#FFFFFF"];
-  lectura [label="1. Lectura\n+ huella SHA-256"];
-  val [label="2. VALIDACIÓN DE DATOS\nControles a–e", fillcolor="#D9F0EC", color="#0F766E", penwidth=2];
-  prep [label="3. Preparación\nserie mensual\n(sin rellenar con 0)"];
-  metodo [label="Control f\nregla metodológica", fillcolor="#D9F0EC", color="#0F766E", penwidth=2];
-  gate [label="COMPUERTA\n¿algún control\ncrítico falló?", shape=diamond, fillcolor="#FFF4E0", color="#C2672B", penwidth=2];
-  stop [label="DETENER\nreporte + registro de ejecución\nlo publicado NO cambia", fillcolor="#F8E1E4", color="#B23A48", penwidth=2];
+  fuente [label="Fuente mensual\n(sintética o institucional)\nmontada en /data, solo lectura", shape=cylinder, fillcolor="#FFFFFF"];
 
-  ajuste [label="4. Ajuste del modelo /\ncálculo de parámetros", style="rounded,dashed,filled"];
-  eval [label="5. EVALUACIÓN TEMPORAL\nMAE/RMSE vs. referencia", style="rounded,dashed,filled", fillcolor="#D9F0EC", color="#0F766E"];
-  acepta [label="6. REGLA DE ACEPTACIÓN\n(autoriza publicación)", style="rounded,dashed,filled", fillcolor="#FFF4E0", color="#C2672B"];
-  mlflow [label="7. Registro MLflow", style="rounded,dashed,filled"];
-  pub [label="8. Publicación\nversión aprobada", style="rounded,dashed,filled"];
-  pubdir [label="published/current\n(+ versiones previas)", shape=folder, style="dashed,filled", fillcolor="#FFFFFF"];
-  tablero [label="Tablero Streamlit\n(solo lee la versión\naprobada)", style="rounded,dashed,filled"];
+  subgraph cluster_pipeline {
+    label="Pipeline: python -m pipeline.run (ejecución explícita)"; fontsize=11; fontname="Helvetica"; style=rounded; color="#5B6B76";
+    lectura [label="1. Lectura\n+ huella SHA-256\n+ clasificación de la fuente"];
+    val [label="2. VALIDACIÓN DE DATOS\nControles a–e", fillcolor="#D9F0EC", color="#0F766E", penwidth=2];
+    prep [label="3. Preparación\nserie mensual\n(sin rellenar con 0)"];
+    metodo [label="Control f\nregla metodológica", fillcolor="#D9F0EC", color="#0F766E", penwidth=2];
+    gate [label="COMPUERTA\n¿algún control\ncrítico falló?", shape=diamond, fillcolor="#FFF4E0", color="#C2672B", penwidth=2];
+    stop [label="DETENER (código 2)\nreporte + registro de ejecución", fillcolor="#F8E1E4", color="#B23A48", penwidth=2];
+    est [label="4. Estimación estacional\n+ EVALUACIÓN TEMPORAL\nMAE/RMSE vs. referencia", fillcolor="#D9F0EC", color="#0F766E"];
+    acepta [label="5. REGLA DE ACEPTACIÓN\ncontrato de resultados\n+ metadata.json", fillcolor="#FFF4E0", color="#C2672B"];
+    monit [label="6. MONITOREO\nactualización · calidad ·\nresultados (alertas)", fillcolor="#D9F0EC", color="#0F766E"];
+    pub [label="7. PUBLICACIÓN CONTROLADA\nbloqueo + verificación\n+ CURRENT atómico", fillcolor="#FFF4E0", color="#C2672B", penwidth=2];
+    sincambio [label="Sin cambios en lo publicado\n(rechazada, bloqueada\no con error)", fillcolor="#F8E1E4", color="#B23A48"];
+  }
+
+  mlflow [label="MLflow Tracking\n(toda ejecución: aceptada,\nrechazada, bloqueada o con error)"];
+
+  subgraph cluster_volumenes {
+    label="Volúmenes de Docker (persisten al recrear contenedores)"; fontsize=11; fontname="Helvetica"; style="rounded,dashed"; color="#0F766E";
+    runs [label="runs_data\n/app/artifacts/runs/<run_id>/\nrun_log.json · monitoreo.json\nreporte de calidad · candidatos", shape=folder, fillcolor="#FFFFFF"];
+    mlvol [label="mlflow_data\n/app/mlflow\nmlflow.db + artifacts", shape=folder, fillcolor="#FFFFFF"];
+    versions [label="published_data\nversions/<run_id>/\ninmutables: estimaciones.csv, metadata.json,\ndecisión, calidad y manifest", shape=folder, fillcolor="#FFFFFF"];
+    current [label="CURRENT\nversión vigente", shape=note, fillcolor="#FFFFFF", color="#0F766E", penwidth=2];
+    bitacora [label="publicaciones.jsonl\nbitácora", shape=note, fillcolor="#FFFFFF"];
+  }
+
+  restore [label="RESTAURACIÓN\npipeline.restore\nversión aprobada e íntegra;\nno regenera estimaciones", fillcolor="#FFF4E0", color="#C2672B"];
+  tablero [label="Tablero Streamlit :8501\nInicio · Estimaciones · Evaluación\nlee solo CURRENT (solo lectura)\ny valida la integridad", fillcolor="#D9F0EC", color="#0F766E", penwidth=2];
+  mlflowui [label="MLflow UI :5000\nmisma base y artefactos"];
 
   fuente -> lectura -> val -> prep -> metodo -> gate;
   val -> gate [style=dotted, label="a–e en FAIL\n(prep. omitida)", constraint=false];
   gate -> stop [label="sí", color="#B23A48", fontcolor="#B23A48"];
-  gate -> ajuste [label="no"];
-  ajuste -> eval -> acepta;
-  acepta -> mlflow [label="aceptada"];
-  acepta -> stop [label="rechazada", color="#B23A48", fontcolor="#B23A48", constraint=false];
-  mlflow -> pub -> pubdir -> tablero;
+  gate -> est [label="no"];
+  est -> acepta -> monit;
+  stop -> monit [style=dotted, label="también se evalúa", constraint=false];
+  monit -> pub [label="aceptada"];
+  monit -> sincambio [label="rechazada o\nbloqueada", color="#B23A48", fontcolor="#B23A48"];
 
-  subgraph cluster_legend { label="Leyenda"; fontsize=10; color="#E3E9ED";
-    l1 [label="Implementado en el avance", fillcolor="#FFFFFF"];
-    l2 [label="Pendiente (entrega final)", style="rounded,dashed,filled", fillcolor="#FFFFFF"];
-    l1 -> l2 [style=invis]; }
+  monit -> runs [style=dashed, label="registros"];
+  lectura -> mlflow [style=dashed, label="abre la ejecución", constraint=false];
+  pub -> mlflow [style=dashed, label="resultado y\netiquetas publicacion.*", constraint=false];
+  mlflow -> mlvol [style=dashed];
+
+  pub -> versions [label="mueve la versión nueva"];
+  pub -> current [label="reemplazo atómico"];
+  pub -> bitacora [style=dotted];
+  current -> monit [style=dotted, label="línea base", constraint=false];
+
+  restore -> current [label="reapunta"];
+  restore -> versions [style=dotted, label="verifica", dir=both];
+
+  current -> tablero [label="versión vigente"];
+  versions -> tablero [style=dotted, label="archivos de esa versión"];
+  mlvol -> mlflowui;
+
+  subgraph cluster_legend { label="Leyenda"; fontsize=10; fontname="Helvetica"; color="#E3E9ED";
+    l1 [label="Etapa del pipeline", fillcolor="#F6F8F9"];
+    l2 [label="Validación / medición", fillcolor="#D9F0EC", color="#0F766E"];
+    l3 [label="Decisión o punto de control", fillcolor="#FFF4E0", color="#C2672B"];
+    l4 [label="Detención o sin cambios", fillcolor="#F8E1E4", color="#B23A48"];
+    l5 [label="Almacenamiento persistente", shape=folder, fillcolor="#FFFFFF"];
+    l1 -> l2 -> l3 -> l4 -> l5 [style=invis]; }
 }

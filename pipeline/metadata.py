@@ -231,6 +231,7 @@ def build_metadata(
         "version_procedimiento": log["version_procedimiento"],
         "commit_git": None if commit in (None, "sin-git") else commit,
         "arbol_git_modificado": log.get("arbol_git_modificado"),
+        "commit_git_origen": log.get("commit_git_origen") or ("no_disponible" if commit in (None, "sin-git") else "git"),
         "configuracion": {"sha256": log["config"]["sha256"], "semilla": log["semilla"]},
         "fuente": {
             "tipo": source_type,

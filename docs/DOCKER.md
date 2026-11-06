@@ -1,6 +1,6 @@
 # Docker Compose: pipeline, tablero y MLflow
 
-**Estado: configuración creada, sin verificar.** Los archivos `Dockerfile`, `docker-compose.yml`, `.dockerignore` y `.env.example` se probaron solo con pruebas de lectura de archivos (`tests/test_docker.py`). Nada de lo que sigue se considera verificado hasta ejecutar los comandos de `README.md` en Docker Desktop y comprobar la persistencia.
+**Estado.** Según los resultados que reportó el equipo, la imagen se construye, MLflow y Streamlit funcionan, el pipeline se ejecuta dentro de Docker, las estimaciones aprobadas se publican y `CURRENT`, el tablero y MLflow conservan sus datos al recrear los contenedores. La trazabilidad del commit (sección «Trazabilidad del commit de Git») es posterior a esa verificación y **no está verificada** hasta ejecutar los comandos de `README.md`.
 
 ## Arquitectura
 
@@ -55,14 +55,39 @@ El almacén de Docker es independiente del de la ejecución local (`mlflow/`, `p
 
 Dentro de Docker se usan los mismos comandos de siempre (`pipeline.restore --list`, `--version`), ejecutados con `docker compose run --rm pipeline ...`. El procedimiento ante fallos es el de `MONITOREO.md`.
 
+## Trazabilidad del commit de Git
+
+La imagen no contiene `.git` ni el ejecutable de Git. Para saber qué código produjo una ejecución, la construcción recibe dos argumentos que el `Dockerfile` convierte en variables de entorno de la imagen:
+
+| Argumento de construcción | Variable en la imagen | Contenido |
+|---|---|---|
+| `GIT_COMMIT` | `LAB11_GIT_COMMIT` | Identificador completo del commit (40 o 64 caracteres hexadecimales) |
+| `GIT_TREE_MODIFIED` | `LAB11_GIT_TREE_MODIFIED` | `true` si había cambios sin confirmar en archivos versionados, `false` si no |
+
+`scripts/docker_build.ps1` los obtiene con `git rev-parse HEAD` y `git status --porcelain --untracked-files=no` y ejecuta `docker compose build`. Si no hay un commit verificable no declara nada. Al ejecutar, `pipeline.run` resuelve el commit en este orden: repositorio Git local (ejecución local); variable `LAB11_GIT_COMMIT` si es un identificador completo; `no_disponible`. Nunca se inventa un identificador y un valor inválido se ignora con una advertencia.
+
+El origen queda en `commit_git_origen` de `run_log.json` y `metadata.json`, y en la etiqueta `git.commit_origen` de MLflow, junto con `commit_git`/`git.commit` y `arbol_git_modificado`/`git.tree_modified`:
+
+| `commit_git_origen` | Significado |
+|---|---|
+| `git` | Commit leído de un repositorio local en el momento de la ejecución |
+| `variable_de_entorno` | Commit declarado al construir la imagen |
+| `no_disponible` | No hay commit; `commit_git` es `null` y la etiqueta `git.commit` no existe |
+
+Limitaciones:
+- Es una declaración de quien construye: si se construye con `docker compose build` sin el script, o con una variable `GIT_COMMIT` equivocada, la imagen registra `no_disponible` o ese valor.
+- El commit identifica el código solo si `arbol_git_modificado` es `false`. Con `true` la imagen contiene cambios sin confirmar y el commit es solo una referencia; con `null` se desconoce. Los archivos nuevos sin seguimiento no se detectan.
+- Reconstruir la imagen con otro commit no modifica las ejecuciones anteriores.
+- El valor queda visible en las capas de la imagen (`docker history`); un identificador de commit no es secreto.
+
 ## Verificación pendiente
 
-Debe comprobar, en este orden: construcción de la imagen; servicios `mlflow` y `streamlit` saludables; ejecución del pipeline con datos sintéticos; versión visible en el tablero; ejecuciones visibles en MLflow con sus artefactos; los mismos datos tras `down` y `up -d`; y una copia limpia del repositorio funcionando. Los comandos están en `README.md`.
+Falta comprobar: la imagen construida con `scripts/docker_build.ps1` y el commit visible en `run_log.json`, `metadata.json` y MLflow; y una copia limpia del repositorio funcionando. Los comandos están en `README.md`.
 
 ## Limitaciones y riesgos
 
 - Las dependencias sin versión fija en `requirements.txt` (por ejemplo `mlflow>=2.14`) se resuelven al construir la imagen y pueden diferir de las del entorno local; para fijarlas hace falta generar un archivo de versiones congeladas.
-- La imagen no incluye Git: el commit no se registra en los metadatos (`commit_git` queda vacío).
+- El commit registrado dentro de Docker es una **declaración** hecha al construir la imagen, no una verificación: ver la sección siguiente.
 - Ejecutar el pipeline mientras el visor de MLflow lee la base SQLite comparte un mismo archivo; los accesos son breves, pero un bloqueo ocasional es posible.
 - Si `LAB11_DATA_DIR` apunta a una carpeta inexistente, Docker la crea vacía.
 - El tablero y MLflow no tienen autenticación: no los exponga fuera del equipo.

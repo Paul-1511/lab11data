@@ -108,12 +108,13 @@ finitas, variaciones mensuales altas). Las alertas se informan en la consola, en
 tablero conserva la versión anterior. Umbrales, interpretación y procedimiento de recuperación en [`docs/MONITOREO.md`](docs/MONITOREO.md).
 `LAB11_MONITOR_ENABLED=0` desactiva el monitoreo.
 
-## Docker Compose (configuración creada; pendiente de verificación)
+## Docker Compose
 
 Tres servicios con una sola imagen: `mlflow` (puerto 5000), `streamlit` (puerto 8501) y `pipeline` (solo bajo demanda).
 Las versiones publicadas, los registros de ejecuciones y MLflow viven en volúmenes de Docker; los datos se montan desde
 fuera, en solo lectura, y no entran en la imagen. Arquitectura, volúmenes y variables en [`docs/DOCKER.md`](docs/DOCKER.md).
-**Estos comandos aún no se han ejecutado: Docker no se considera verificado hasta comprobar el resultado.**
+Construcción, servicios, publicación y persistencia fueron comprobados por el equipo; el registro del commit de Git (paso 3) está
+escrito pero **sin verificar** hasta ejecutar los comandos de su sección.
 
 Convención: los bloques están en **PowerShell, en el equipo**. En `docker compose run --rm pipeline <comando>`, lo que va
 después de `pipeline` se ejecuta **dentro del contenedor** (Linux, carpeta `/app`, rutas con `/`).
@@ -132,10 +133,21 @@ cd C:\Users\mjyee\Downloads\DataScience\lab11data
 Copy-Item .env.example .env
 ```
 
-**3. Construcción de la imagen.**
+**3. Construcción de la imagen.** El script declara a la imagen el commit de Git del código que empaqueta (la imagen no
+contiene `.git`) y luego ejecuta `docker compose build`.
 
 ```powershell
-docker compose build
+powershell -ExecutionPolicy Bypass -File .\scripts\docker_build.ps1
+```
+
+`docker compose build` a secas también funciona, pero entonces la imagen registra el commit como `no_disponible`. El commit
+queda en `run_log.json`, `metadata.json` (`commit_git`, `commit_git_origen`, `arbol_git_modificado`) y en las etiquetas
+`git.*` de MLflow; si `arbol_git_modificado` es `true`, la imagen incluye cambios sin confirmar. Detalle y limitaciones en
+[`docs/DOCKER.md`](docs/DOCKER.md). Para comprobarlo después de ejecutar el pipeline:
+
+```powershell
+docker compose run --rm pipeline sh -c "printenv LAB11_GIT_COMMIT LAB11_GIT_TREE_MODIFIED"
+docker compose run --rm pipeline cat artifacts/runs/RUN_ID/run_log.json
 ```
 
 **4. Inicio de servicios** (MLflow y tablero; no se ejecuta el pipeline).
@@ -218,12 +230,23 @@ cd C:\Users\mjyee\Downloads\DataScience\lab11data
 docker compose down
 git clone C:\Users\mjyee\Downloads\DataScience\lab11data C:\Users\mjyee\Downloads\DataScience\lab11-limpio
 cd C:\Users\mjyee\Downloads\DataScience\lab11-limpio
-docker compose build
+powershell -ExecutionPolicy Bypass -File .\scripts\docker_build.ps1
 docker compose up -d
 docker compose run --rm pipeline python -m pipeline.run --data /data/synthetic/base_sintetica.csv --source-kind sintetica
 ```
 
 Abra <http://localhost:8501> y <http://localhost:5000>. Al terminar: `docker compose down -v` dentro de la copia elimina solo sus volúmenes.
+
+## Diagrama de flujo
+
+La fuente es `docs/flujo.dot`. El `.svg` y el `.png` se regeneran con Graphviz (`dot -V` comprueba que está instalado):
+
+```powershell
+dot -Tsvg docs/flujo.dot -o docs/diagrama_flujo.svg
+dot -Tpng -Gdpi=150 docs/flujo.dot -o docs/diagrama_flujo.png
+```
+
+`tests/test_docker.py` comprueba que el `.svg` ya no mencione la estructura anterior de publicación.
 
 ## Pruebas
 
@@ -235,6 +258,7 @@ Cubren cada control (caso correcto y caso fallido), la población de referencia 
 Para provocar una falla a mano: `python scripts/make_synthetic_data.py --fault duplicate_key --out /tmp/malo.csv`; para inyectarla en una copia de los datos reales, añadir `--base RUTA/Base.xlsx`.
 `tests/test_dashboard.py` prueba el cargador y las páginas del tablero con versiones sintéticas en carpetas temporales.
 `tests/test_docker.py` revisa solo los archivos de configuración de Docker; no ejecuta Docker.
+`tests/test_traceability.py` prueba la resolución y el registro del commit de Git, con y sin repositorio.
 `tests/test_monitoring.py` prueba las alertas y el ciclo de fallo controlado, conservación de `CURRENT`, corrección y restauración.
 
 ## Estructura

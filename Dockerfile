@@ -31,8 +31,16 @@ COPY scripts ./scripts
 RUN mkdir -p /app/artifacts /app/published /app/mlflow /data \
     && chown -R app:app /app /data
 
+# Trazabilidad del código sin copiar .git: quien construye la imagen declara el commit y si el árbol de
+# trabajo tenía cambios sin confirmar (scripts/docker_build.ps1 los obtiene de Git). Vacíos significan
+# "no disponible": nunca se inventa un identificador. Se declaran al final para conservar la caché de pip.
+ARG GIT_COMMIT=""
+ARG GIT_TREE_MODIFIED=""
+
 ENV LAB11_MLFLOW_DIR=/app/mlflow \
-    LAB11_PUBLISHED_DIR=/app/published
+    LAB11_PUBLISHED_DIR=/app/published \
+    LAB11_GIT_COMMIT=$GIT_COMMIT \
+    LAB11_GIT_TREE_MODIFIED=$GIT_TREE_MODIFIED
 
 USER app
 

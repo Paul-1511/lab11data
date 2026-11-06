@@ -226,6 +226,62 @@ def test_modules_run_by_the_services_exist():
         assert (ROOT / module).is_file(), module
 
 
+# ---- Trazabilidad del commit dentro de la imagen -----------------------------------------------
+def test_dockerfile_declares_the_commit_build_arguments_with_empty_defaults(dockerfile):
+    from pipeline.run import ENV_COMMIT, ENV_TREE_MODIFIED
+
+    assert 'ARG GIT_COMMIT=""' in dockerfile and 'ARG GIT_TREE_MODIFIED=""' in dockerfile
+    assert f"{ENV_COMMIT}=$GIT_COMMIT" in dockerfile and f"{ENV_TREE_MODIFIED}=$GIT_TREE_MODIFIED" in dockerfile
+    # Declarados después de instalar dependencias para no invalidar la caché de pip cuando cambia el commit.
+    assert dockerfile.index("ARG GIT_COMMIT") > dockerfile.index("pip install -r requirements.txt")
+    assert dockerfile.index("LAB11_GIT_COMMIT=$GIT_COMMIT") < dockerfile.index("USER app")
+
+
+def test_image_has_no_git_directory_or_git_executable(dockerfile, ignore_entries):
+    sources = [line.split()[1] for line in dockerfile.splitlines() if line.upper().startswith("COPY ")]
+    assert not any(source.startswith(".git") for source in sources)
+    assert ".git" in ignore_entries
+    assert "apt-get" not in dockerfile and "apk add" not in dockerfile
+
+
+def test_compose_passes_the_commit_as_build_arguments_without_inventing_a_default(compose):
+    for name, service in compose["services"].items():
+        args = service["build"]["args"]
+        assert args["GIT_COMMIT"] == "${GIT_COMMIT:-}", name
+        assert args["GIT_TREE_MODIFIED"] == "${GIT_TREE_MODIFIED:-}", name
+
+
+def test_build_script_obtains_the_commit_from_git_and_declares_unavailable_otherwise():
+    script = (ROOT / "scripts" / "docker_build.ps1").read_text(encoding="utf-8")
+    for token in ("git rev-parse HEAD", "git status --porcelain --untracked-files=no", "$env:GIT_COMMIT",
+                  "$env:GIT_TREE_MODIFIED", "docker compose build", "no disponible"):
+        assert token in script
+
+
+# ---- Diagrama de flujo -------------------------------------------------------------------------
+def test_flow_diagram_source_reflects_the_implemented_architecture():
+    text = (ROOT / "docs" / "flujo.dot").read_text(encoding="utf-8")
+    assert "published/current" not in text
+    for token in ("Lectura", "Controles a–e", "Control f", "Preparación", "Estimación", "EVALUACIÓN TEMPORAL",
+                  "REGLA DE ACEPTACIÓN", "MLflow Tracking", "MONITOREO", "PUBLICACIÓN CONTROLADA", "versions/<run_id>/",
+                  "CURRENT", "RESTAURACIÓN", "Tablero Streamlit", "Volúmenes de Docker"):
+        assert token in text, token
+    assert "Pendiente" not in text
+
+
+def test_no_documentation_refers_to_the_old_published_current_layout():
+    for path in [ROOT / "README.md", *(ROOT / "docs").glob("*.md"), ROOT / "docs" / "flujo.dot"]:
+        assert "published/current" not in path.read_text(encoding="utf-8"), path.name
+
+
+def test_generated_svg_matches_the_updated_source():
+    """Falla mientras docs/diagrama_flujo.svg no se regenere desde docs/flujo.dot (comando en README)."""
+    svg = (ROOT / "docs" / "diagrama_flujo.svg").read_text(encoding="utf-8")
+    assert "published/current" not in svg
+    for token in ("CURRENT", "MONITOREO", "RESTAURACI"):
+        assert token in svg, token
+
+
 def test_tracking_accepts_a_container_directory_override(cfg, monkeypatch):
     from pipeline.tracking import ENV_DIR, load_settings
 
