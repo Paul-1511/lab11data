@@ -1,6 +1,6 @@
 # Contrato de resultados, validación y metadatos
 
-Este documento describe lo implementado en esta etapa: el contrato de las estimaciones candidatas, su validador y el archivo `metadata.json` de cada ejecución. MLflow, la publicación controlada, la restauración, el monitoreo y Docker no están implementados; los campos que dependerán de ellos quedan en `null`.
+Este documento describe el contrato de las estimaciones candidatas, su validador y el archivo `metadata.json` de cada ejecución. Los campos `mlflow` y `publicacion` del `metadata.json` de la carpeta de la ejecución quedan en `null` hasta que se completan: `mlflow` con los identificadores de MLflow y `publicacion` solo en la copia publicada (ver `MLFLOW.md` y `PUBLICACION.md`).
 
 ## Contrato de estimaciones
 

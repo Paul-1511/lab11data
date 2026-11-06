@@ -1,6 +1,6 @@
 # Registro de ejecuciones con MLflow Tracking
 
-Cada ejecución del pipeline se registra en MLflow, también las rechazadas por la regla de aceptación, las detenidas por un control crítico y las que terminan con un error inesperado. Este módulo solo registra: no publica resultados, no restaura versiones y no está empaquetado en Docker.
+Cada ejecución del pipeline se registra en MLflow, también las rechazadas por la regla de aceptación, las detenidas por un control crítico y las que terminan con un error inesperado. Este módulo solo registra: no publica resultados ni restaura versiones. En Docker Compose, el servicio `mlflow` es un visor del mismo almacén (ver `DOCKER.md`).
 
 ## Dependencia y configuración
 
